@@ -67,7 +67,7 @@ public class StartActivity extends Activity implements View.OnClickListener {
 	}
 
 	private void startMotionTracking(double d) {
-		Intent startmotiontracking = new Intent(this, MotionTrackingActivity.class);
+		Intent startmotiontracking = new Intent(this, PointCloudActivity.class);
 		startmotiontracking.putExtra(OPENGL_VERSION, d);
 		startActivity(startmotiontracking);
 	}

@@ -149,6 +149,56 @@
                 android:layout_height="wrap_content"
                 android:text="@string/NA" />
         </LinearLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/averageZ" />
+
+            <TextView
+                android:id="@+id/averageZ"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" 
+                android:text="@string/NA" />
+        </LinearLayout>
+          <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pointCount" />
+
+            <TextView
+                android:id="@+id/pointCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" 
+                android:text="@string/NA" />
+        </LinearLayout>
+        
+         <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/frameDelta" />
+
+            <TextView
+                android:id="@+id/frameDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" 
+                android:text="@string/NA" />
+        </LinearLayout>
+           
     </LinearLayout>
 
     <Button

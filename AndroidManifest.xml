@@ -42,7 +42,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.digitalblacksmith.tango_ar_pointcloud.MotionTrackingActivity"
+            android:name="com.digitalblacksmith.tango_ar_pointcloud.PointCloudActivity"
         	android:label="@string/app_name" 
             android:screenOrientation="landscape"> 
         </activity>

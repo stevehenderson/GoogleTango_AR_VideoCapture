@@ -22,6 +22,7 @@ import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
 import com.google.atap.tangoservice.TangoEvent;
+import com.google.atap.tangoservice.TangoInvalidException;
 import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
@@ -44,6 +45,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 
@@ -64,10 +67,12 @@ import java.util.ArrayList;
  * @author  Steve Henderson @stevehenderson 
  * 
  */
-public class MotionTrackingActivity extends Activity implements View.OnClickListener, SurfaceHolder.Callback  {
+public class PointCloudActivity extends Activity implements View.OnClickListener, SurfaceHolder.Callback  {
 
-	private static final String TAG = MotionTrackingActivity.class.getSimpleName();
+	private static final String TAG = PointCloudActivity.class.getSimpleName();
 	private static final int SECS_TO_MILLISECS = 1000;
+
+
 	private Tango mTango;
 	private TangoConfig mConfig;
 	private TextView mDeltaTextView;
@@ -78,6 +83,9 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 	private TextView mTangoServiceVersionTextView;
 	private TextView mApplicationVersionTextView;
 	private TextView mTangoEventTextView;
+	private TextView mPointCountTextView;
+	private TextView mAverageZTextView;
+	private TextView mFrequencyTextView;
 	private float mPreviousTimeStamp;
 	private int mPreviousPoseStatus;
 	private int count;
@@ -86,12 +94,14 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 	private Button mDropBoxButton;
 	//private boolean mIsAutoRecovery;
 
-	private OpenGL2Renderer mOpenGL2Renderer;
-	private GLClearRenderer mClearRenderer;
+	private PCRenderer mOpenGL2Renderer;
 	private DemoRenderer mDemoRenderer;
 	private GLSurfaceView mGLView;
 	private SurfaceHolder surfaceHolder;
 	private SurfaceView surfaceView;
+
+	private float mXyIjPreviousTimeStamp;
+	private float mCurrentTimeStamp;
 
 	boolean first_initialized = false;
 
@@ -99,80 +109,6 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 
 	Vector3f lastPosition;
 	Vector3f dropBoxPosition;
-
-	/**
-	 * Set up the activity using OpenGL 10
-	 */
-	@SuppressWarnings("deprecation")
-	private void setUpOpenGL10() {
-
-		///////////////////////
-		//Create GLSurface
-		///////////////////////
-		// OpenGL view where all of the graphics are drawn
-		//mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
-		mGLView = new GLSurfaceView(this);
-		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
-		surfaceHolder = mGLView.getHolder();
-		surfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
-		// Configure OpenGL renderer
-		mClearRenderer = new GLClearRenderer();
-		//mGLView.setEGLContextClientVersion(2);
-		mGLView.setRenderer(mClearRenderer);
-		mDemoRenderer = mClearRenderer;
-		setContentView(mGLView);
-
-		////////////////////////////////////
-		// Instantiate the Tango service
-		///////////////////////////////////
-		mTango = new Tango(this);
-		// Create a new Tango Configuration and enable the MotionTrackingActivity API
-		mConfig = new TangoConfig();
-		mConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
-
-		try {
-			setTangoListeners();
-		} catch (TangoErrorException e) {
-			Toast.makeText(getApplicationContext(), R.string.TangoError, Toast.LENGTH_SHORT).show();
-		} catch (SecurityException e) {
-			Toast.makeText(getApplicationContext(), R.string.motiontrackingpermission,
-					Toast.LENGTH_SHORT).show();
-		}
-
-		//////////////////////////
-		// Create Camera Surface
-		//////////////////////////
-		surfaceView = new SurfaceView(this);
-		surfaceHolder = surfaceView.getHolder();
-		surfaceHolder.addCallback(this);
-		addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-
-		/////////////////////////
-		//Create UI Objects 
-		////////////////////////
-		LayoutInflater inflater = getLayoutInflater();
-		View tmpView;
-		tmpView = inflater.inflate(R.layout.activity_motion_tracking, null);
-		getWindow().addContentView(tmpView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-				ViewGroup.LayoutParams.FILL_PARENT)); 
-
-	
-		mApplicationVersionTextView = (TextView) findViewById(R.id.appversion);
-
-		mApplicationVersionTextView.setText("OpenGL 1.0");
-
-		// Button to reset motion tracking
-		mMotionResetButton = (Button) findViewById(R.id.resetmotion);
-		// Set up button click listeners
-		mMotionResetButton.setOnClickListener(this);
-
-		// Button to drop position box (breadcrumb cube)
-		mDropBoxButton = (Button) findViewById(R.id.dropbox);
-		// Set up button click listeners
-		mDropBoxButton.setOnClickListener(this);
-
-	}
 
 
 	/**
@@ -191,14 +127,7 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
 		surfaceHolder = mGLView.getHolder();
 		surfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
-		// Configure OpenGL renderer
-		//mRenderer = new GLClearRenderer();
-		mOpenGL2Renderer = new OpenGL2Renderer();
 
-		mDemoRenderer = mOpenGL2Renderer;
-		mGLView.setRenderer(mOpenGL2Renderer);
-		mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-		//setContentView(mGLView);
 
 		////////////////////////////////////
 		// Instantiate the Tango service
@@ -207,7 +136,22 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 		// Create a new Tango Configuration and enable the MotionTrackingActivity API
 		mConfig = new TangoConfig();
 		mConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
+		//mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
+		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
+
+
+		// Configure OpenGL renderer
+		//mRenderer = new GLClearRenderer();
+		int maxDepthPoints = mConfig.getInt("max_point_cloud_elements");
+
+		mOpenGL2Renderer = new PCRenderer(maxDepthPoints);
+
+		mDemoRenderer = mOpenGL2Renderer;
+		mOpenGL2Renderer.setFirstPersonView();
+		mGLView.setRenderer(mOpenGL2Renderer);
+		mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		//setContentView(mGLView);
+
 
 		try {
 			setTangoListeners();
@@ -265,18 +209,17 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Intent intent = getIntent();
-		mOpenGLVersion  = intent.getDoubleExtra(StartActivity.OPENGL_VERSION, 1.0);
-		if(mOpenGLVersion==1.0) {
-			setUpOpenGL10();
-		} else {
-			setUpOpenGL20();
-		}
+		setUpOpenGL20();
+
 		// Text views for displaying translation and rotation data
 		mPoseTextView = (TextView) findViewById(R.id.pose);
 		mQuatTextView = (TextView) findViewById(R.id.quat);
 		mPoseCountTextView = (TextView) findViewById(R.id.posecount);
 		mDeltaTextView = (TextView) findViewById(R.id.deltatime);
 		mTangoEventTextView = (TextView) findViewById(R.id.tangoevent);
+		mPointCountTextView = (TextView) findViewById(R.id.pointCount);
+		mAverageZTextView = (TextView) findViewById(R.id.averageZ);
+		mFrequencyTextView = (TextView) findViewById(R.id.frameDelta);
 
 		// Text views for the status of the pose data and Tango library versions
 		mPoseStatusTextView = (TextView) findViewById(R.id.status);
@@ -284,7 +227,7 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 
 		// Display the library version for debug purposes
 		mTangoServiceVersionTextView.setText(mConfig.getString("tango_service_library_version"));
-		
+
 		dropBoxPosition = new Vector3f();
 		lastPosition = new Vector3f();
 	}
@@ -447,8 +390,61 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 			}
 
 			@Override
-			public void onXyzIjAvailable(TangoXyzIjData arg0) {
-				// We are not using TangoXyzIjData for this application
+			public void onXyzIjAvailable(final TangoXyzIjData xyzIj) {
+				//Log.i(TAG,"xyzijAvailable!!!!!!!!");
+				mCurrentTimeStamp = (float) xyzIj.timestamp;
+				final float frameDelta = (mCurrentTimeStamp - mXyIjPreviousTimeStamp)
+						* SECS_TO_MILLISECS;
+				mXyIjPreviousTimeStamp = mCurrentTimeStamp;
+				byte[] buffer = new byte[xyzIj.xyzCount * 3 * 4];
+				FileInputStream fileStream = new FileInputStream(
+						xyzIj.xyzParcelFileDescriptor.getFileDescriptor());
+				try {
+					fileStream.read(buffer,
+							xyzIj.xyzParcelFileDescriptorOffset, buffer.length);
+					fileStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				try {
+					TangoPoseData pointCloudPose = mTango.getPoseAtTime(
+							mCurrentTimeStamp, framePairs.get(0));
+
+					mOpenGL2Renderer.getPointCloud().UpdatePoints(buffer,
+							xyzIj.xyzCount);
+					mOpenGL2Renderer.getModelMatCalculator()
+					.updatePointCloudModelMatrix(
+							pointCloudPose.getTranslationAsFloats(),
+							pointCloudPose.getRotationAsFloats());
+					mOpenGL2Renderer.getPointCloud().setModelMatrix(
+							mOpenGL2Renderer.getModelMatCalculator()
+							.getPointCloudModelMatrixCopy());
+				} catch (TangoErrorException e) {
+					Toast.makeText(getApplicationContext(),
+							R.string.TangoError, Toast.LENGTH_SHORT).show();
+				} catch (TangoInvalidException e) {
+					Toast.makeText(getApplicationContext(),
+							R.string.TangoError, Toast.LENGTH_SHORT).show();
+				}
+
+				// Must run UI changes on the UI thread. Running in the Tango
+				// service thread
+				// will result in an error.
+				runOnUiThread(new Runnable() {
+					DecimalFormat threeDec = new DecimalFormat("0.000");
+
+					@Override
+					public void run() {
+						// Display number of points in the point cloud
+						mPointCountTextView.setText(Integer
+								.toString(xyzIj.xyzCount));
+						mFrequencyTextView.setText(""
+								+ threeDec.format(frameDelta));
+						mAverageZTextView.setText(""
+								+ threeDec.format(mOpenGL2Renderer.getPointCloud()
+										.getAverageZ()));
+					}
+				});
 			}
 
 			@Override
@@ -490,7 +486,8 @@ public class MotionTrackingActivity extends Activity implements View.OnClickList
 		if (surface.isValid()) {
 			TangoConfig config = new TangoConfig();
 			config =  mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-			mTango.connectSurface(0, surface);
+			config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
+			//mTango.connectSurface(0, surface);
 			first_initialized=true;
 			mTango.connect(config);
 
