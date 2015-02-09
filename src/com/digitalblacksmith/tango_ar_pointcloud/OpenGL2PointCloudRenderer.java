@@ -526,7 +526,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 
 		drawCube();
 		
-		//mPointCloud.draw(mViewMatrix, mProjectionMatrix);
+		mPointCloud.draw(mViewMatrix, mProjectionMatrix);
 		// Draw a point to indicate the light.
 		//GLES20.glUseProgram(mPointProgramHandle);        
 		//drawLight();

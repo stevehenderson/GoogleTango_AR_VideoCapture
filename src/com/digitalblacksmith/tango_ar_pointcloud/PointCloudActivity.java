@@ -136,7 +136,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		mConfig = new TangoConfig();
 		mConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
 		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, false);
+		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
 
 		// Configure OpenGL renderer
