@@ -94,18 +94,19 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 	private Button mDropBoxButton;
 	//private boolean mIsAutoRecovery;
 
-	private PCRenderer mOpenGL2Renderer;
+	//private PCRenderer mOpenGL2Renderer;
+	private OpenGL2PointCloudRenderer mOpenGL2Renderer;
 	private DemoRenderer mDemoRenderer;
 	private GLSurfaceView mGLView;
-	private SurfaceHolder surfaceHolder;
+	
 	private SurfaceView surfaceView;
 
 	private float mXyIjPreviousTimeStamp;
 	private float mCurrentTimeStamp;
 
 	boolean first_initialized = false;
-
-	double mOpenGLVersion = 1.0;
+	
+	Surface tangoSurface;
 
 	Vector3f lastPosition;
 	Vector3f dropBoxPosition;
@@ -123,11 +124,9 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// OpenGL view where all of the graphics are drawn
 		mGLView = new GLSurfaceView(this);
 		mGLView.setEGLContextClientVersion(2);
-	
 		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
-		surfaceHolder = mGLView.getHolder();
-		surfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
-
+		SurfaceHolder glSurfaceHolder = mGLView.getHolder();
+		glSurfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
 
 		////////////////////////////////////
 		// Instantiate the Tango service
@@ -136,15 +135,15 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// Create a new Tango Configuration and enable the MotionTrackingActivity API
 		mConfig = new TangoConfig();
 		mConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-		//mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
+		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
+		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, false);
 
 
 		// Configure OpenGL renderer
 		//mRenderer = new GLClearRenderer();
 		int maxDepthPoints = mConfig.getInt("max_point_cloud_elements");
 
-		mOpenGL2Renderer = new PCRenderer(maxDepthPoints);
+		mOpenGL2Renderer = new OpenGL2PointCloudRenderer(maxDepthPoints);
 
 		mDemoRenderer = mOpenGL2Renderer;
 		mOpenGL2Renderer.setFirstPersonView();
@@ -166,20 +165,14 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// Create Camera Surface
 		//////////////////////////
 		surfaceView = new SurfaceView(this);
-		surfaceHolder = surfaceView.getHolder();
-		surfaceHolder.addCallback(this);
+		SurfaceHolder activitySurfaceHolder = surfaceView.getHolder();
+		activitySurfaceHolder.addCallback(this);
 
 
-		if(3==3) {
-			//mGLView.setZOrderOnTop(true);
-			setContentView(mGLView);
-			addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-		} else {
-			//THIS ORDER WORKS --- but dark
-			//mGLView.setZOrderOnTop(false);
-			setContentView(surfaceView);
-			addContentView( mGLView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-		}
+		//mGLView.setZOrderOnTop(true);
+		setContentView(mGLView);
+		addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
+		
 		/////////////////////////
 		//Create UI Objects 
 		////////////////////////
@@ -237,6 +230,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 	}
 
 	private void motionReset() {
+		
 		mTango.resetMotionTracking();
 	}
 
@@ -401,6 +395,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 						* SECS_TO_MILLISECS;
 				mXyIjPreviousTimeStamp = mCurrentTimeStamp;
 				byte[] buffer = new byte[xyzIj.xyzCount * 3 * 4];
+				//////mGLView.requestRender();
 				FileInputStream fileStream = new FileInputStream(
 						xyzIj.xyzParcelFileDescriptor.getFileDescriptor());
 				try {
@@ -486,14 +481,14 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
+		
 		Surface surface = holder.getSurface();
+		
 		if (surface.isValid()) {
-			TangoConfig config = new TangoConfig();
-			config =  mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-			config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
+					
 			mTango.connectSurface(0, surface);
 			first_initialized=true;
-			mTango.connect(config);
+			mTango.connect(mConfig);
 
 		}
 
