@@ -60,7 +60,8 @@ public class PCRenderer extends Renderer implements GLSurfaceView.Renderer, Demo
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        GLES20.glClearColor(1f, 1f, 1f, 1.0f);
+        GLES20.glClearColor(0f, 0f, 0f, 0.0f);
+        GLES20.glEnable(GLES20.GL_CULL_FACE);
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         mPointCloud = new PointCloud(mMaxDepthPoints);
         mGrid = new Grid();
@@ -102,9 +103,9 @@ public class PCRenderer extends Renderer implements GLSurfaceView.Renderer, Demo
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-        mGrid.draw(mViewMatrix, mProjectionMatrix);
+        //mGrid.draw(mViewMatrix, mProjectionMatrix);
         mPointCloud.draw(mViewMatrix, mProjectionMatrix);
-        mCameraFrustumAndAxis.draw(mViewMatrix, mProjectionMatrix);
+        //mCameraFrustumAndAxis.draw(mViewMatrix, mProjectionMatrix);
     }
 
     public PointCloud getPointCloud() {

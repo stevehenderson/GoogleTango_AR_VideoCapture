@@ -123,7 +123,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// OpenGL view where all of the graphics are drawn
 		mGLView = new GLSurfaceView(this);
 		mGLView.setEGLContextClientVersion(2);
-		//mGLView.setZOrderOnTop(true);
+	
 		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
 		surfaceHolder = mGLView.getHolder();
 		surfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
@@ -170,13 +170,16 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		surfaceHolder.addCallback(this);
 
 
-		setContentView(mGLView);
-		addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-
-		//THIS ORDER WONT WORK
-		//setContentView(surfaceView);
-		//addContentView( mGLView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-
+		if(3==3) {
+			//mGLView.setZOrderOnTop(true);
+			setContentView(mGLView);
+			addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
+		} else {
+			//THIS ORDER WORKS --- but dark
+			//mGLView.setZOrderOnTop(false);
+			setContentView(surfaceView);
+			addContentView( mGLView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
+		}
 		/////////////////////////
 		//Create UI Objects 
 		////////////////////////
@@ -201,6 +204,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// Set up button click listeners
 		mDropBoxButton.setOnClickListener(this);
 
+		//mOpenGL2Renderer.setFirstPersonView();
 
 	}
 
@@ -487,7 +491,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 			TangoConfig config = new TangoConfig();
 			config =  mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
 			config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
-			//mTango.connectSurface(0, surface);
+			mTango.connectSurface(0, surface);
 			first_initialized=true;
 			mTango.connect(config);
 
