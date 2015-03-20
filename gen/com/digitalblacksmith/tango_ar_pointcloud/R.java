@@ -52,21 +52,16 @@ public final class R {
         public static final int yo=0x7f02001b;
     }
     public static final class id {
-        public static final int appversion=0x7f080002;
-        public static final int averageZ=0x7f080009;
-        public static final int deltatime=0x7f080006;
-        public static final int dropbox=0x7f08000d;
-        public static final int frameDelta=0x7f08000b;
+        public static final int averageZ=0x7f080005;
+        public static final int dropbox=0x7f080009;
+        public static final int frameDelta=0x7f080007;
         public static final int linearLayout1=0x7f080000;
-        public static final int opengl1=0x7f08000e;
-        public static final int opengl2=0x7f08000f;
-        public static final int pointCount=0x7f08000a;
-        public static final int pose=0x7f080007;
-        public static final int posecount=0x7f080005;
-        public static final int quat=0x7f080008;
-        public static final int resetmotion=0x7f08000c;
-        public static final int status=0x7f080004;
-        public static final int tangoevent=0x7f080003;
+        public static final int pointCount=0x7f080006;
+        public static final int pose=0x7f080003;
+        public static final int quat=0x7f080004;
+        public static final int resetmotion=0x7f080008;
+        public static final int startButton=0x7f08000a;
+        public static final int tangoevent=0x7f080002;
         public static final int version=0x7f080001;
     }
     public static final class layout {
@@ -78,32 +73,30 @@ public final class R {
         public static final int per_pixel_vertex_shader=0x7f040001;
     }
     public static final class string {
-        public static final int NA=0x7f05001c;
-        public static final int TangoError=0x7f050017;
-        public static final int TangoOutOfDateException=0x7f050018;
+        public static final int NA=0x7f05001a;
+        public static final int TangoError=0x7f050015;
+        public static final int TangoOutOfDateException=0x7f050016;
         public static final int app_name=0x7f050000;
         public static final int appversion=0x7f050004;
-        public static final int autorecoveryoff=0x7f050015;
-        public static final int autorecoveryon=0x7f050014;
+        public static final int autorecoveryoff=0x7f050013;
+        public static final int autorecoveryon=0x7f050012;
         public static final int averageZ=0x7f05000a;
         public static final int deltatime=0x7f050009;
-        public static final int dropbox=0x7f05001a;
+        public static final int dropbox=0x7f050018;
         public static final int first_person=0x7f05000e;
         public static final int frameDelta=0x7f05000b;
-        public static final int latest_adf_is=0x7f050021;
+        public static final int latest_adf_is=0x7f05001f;
         public static final int menu_name=0x7f050001;
-        public static final int motiontrackingpermission=0x7f05001b;
-        public static final int opengl1=0x7f050012;
-        public static final int opengl2=0x7f050013;
-        public static final int pointCount=0x7f050016;
+        public static final int motiontrackingpermission=0x7f050019;
+        public static final int pointCount=0x7f050014;
         public static final int pose=0x7f05000c;
-        public static final int pose_initializing=0x7f05001d;
-        public static final int pose_invalid=0x7f05001f;
-        public static final int pose_unknown=0x7f050020;
-        public static final int pose_valid=0x7f05001e;
+        public static final int pose_initializing=0x7f05001b;
+        public static final int pose_invalid=0x7f05001d;
+        public static final int pose_unknown=0x7f05001e;
+        public static final int pose_valid=0x7f05001c;
         public static final int posecount=0x7f050007;
         public static final int quat=0x7f05000d;
-        public static final int resetmotiontracking=0x7f050019;
+        public static final int resetmotiontracking=0x7f050017;
         public static final int serviceversion=0x7f050003;
         public static final int start=0x7f050011;
         public static final int start2device=0x7f050006;

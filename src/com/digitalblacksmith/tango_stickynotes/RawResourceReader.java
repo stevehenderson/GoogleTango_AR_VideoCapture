@@ -1,4 +1,4 @@
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
 import java.io.BufferedReader;
 import java.io.IOException;

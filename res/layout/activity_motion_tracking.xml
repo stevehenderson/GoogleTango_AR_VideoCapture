@@ -43,23 +43,7 @@
                 android:text="@string/NA" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal" >
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/appversion" />
-
-            <TextView
-                android:id="@+id/appversion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NA" />
-        </LinearLayout>
-
+        
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -77,55 +61,12 @@
                 android:text="@string/NA" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal" >
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/start2device" />
-        </LinearLayout>
+      
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal" >
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingLeft="20dp"
-                android:text="@string/status" />
-
-            <TextView
-                android:id="@+id/status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NA" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/posecount" />
-
-            <TextView
-                android:id="@+id/posecount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NA" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/deltatime" />
-
-            <TextView
-                android:id="@+id/deltatime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/NA" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -164,13 +105,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" 
                 android:text="@string/NA" />
-        </LinearLayout>
-          <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal" >
-
-            <TextView
+            
+              <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/pointCount" />
@@ -181,6 +117,7 @@
                 android:layout_height="wrap_content" 
                 android:text="@string/NA" />
         </LinearLayout>
+        
         
          <LinearLayout
             android:layout_width="wrap_content"

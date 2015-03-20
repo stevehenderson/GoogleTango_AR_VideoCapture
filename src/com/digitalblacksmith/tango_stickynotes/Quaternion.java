@@ -1,4 +1,4 @@
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
 //https://code.google.com/p/exemplwjgl/source/browse/trunk/src/fcampos/rawengine3D/MathUtil/?r=47
 public class Quaternion extends Vector4f {

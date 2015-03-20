@@ -1,21 +1,17 @@
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
-import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import com.digitalblacksmith.tango_ar_pointcloud.R;
 import com.projecttango.tangoutils.Renderer;
 import com.projecttango.tangoutils.renderables.PointCloud;
 
 import android.content.Context;
-import android.content.res.Resources;
-import android.graphics.drawable.Drawable;
+
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -23,21 +19,27 @@ import android.os.SystemClock;
 import android.util.Log;
 
 /**
- * This class implements our custom renderer. Note that the GL10 parameter passed in is unused for OpenGL ES 2.0
- * renderers -- the static class GLES20 is used instead.
+ * This class is a custom OPENGL 2 ES renderer that displays billboards sticknotes in an augmented reality environment.
  * 
- * from:
+ * The renderer was adapted from this example
  * https://code.google.com/p/android-tes/source/browse/trunk/opengl+example/android/AndroidOpenGLESLessons/src/com/learnopengles/android/lesson2/LessonTwoRenderer.java?r=226
+ * 
+ * 
+ * @author henderso
  */
-public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView.Renderer, DemoRenderer {
+public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView.Renderer {
 	
-	
+	/**
+	 * The number of possible billboards.  Ensure you have a texture in res/drawable to match
+	 */
 	public final int MAX_BILLBOARDS = 21;
-	
 	
 	/** Used for debug logs. */
 	private static final String TAG = "OpenGL2PointCloudRenderer";
 
+	/**
+	 * A pointer back to the encapsulating activity
+	 */
 	private final Context mActivityContext;
 
 	/**
@@ -48,9 +50,6 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 
 	/** Store the projection matrix. This is used to project the scene onto a 2D viewport. */
 	private float[] mProjectionMatrix = new float[16];
-
-
-	private float[] mProjectionMatrixFishEye = new float[16];
 
 	/** Allocate storage for the final combined matrix. This will be passed into the shader program. */
 	private float[] mMVPMatrix = new float[16];
@@ -76,96 +75,157 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/** This is a handle to our light point program. */
 	private int mPointProgramHandle;        
 
-	
-	
-	
-
 	/** This is a handle to our texture data. */
 	private int[] mTextureDataHandles;
 
-
+	/**
+	 * A Tango PointCloud object.  A bunch of points detected by the Tango 
+	 */
 	private PointCloud mPointCloud;
+	
+	/**
+	 * The maximum number of Points tracked by the Tango
+	 */
 	private int mMaxDepthPoints;
 
 	/**
-	 * Cube scale
+	 * Billboard scale factor
 	 */
 	float d = 0.05f;
-
-	float x,y,z;
-	float qx,qy,qz,qw;
-
+	
+	/**
+	 * Camera (Tango) world coordinate X
+	 */
+	float cameraX;
+	
+	/**
+	 * Camera (Tango) world coordinate Y
+	 */
+	float cameraY;
+	
+	/**
+	 * Camera (Tango) world coordinate Z
+	 */
+	float cameraZ;
+		
+	/**
+	 * Camera (Tango) rotation Quaternion X
+	 */
+	float qx;
+	
+	/**
+	 * Camera (Tango) rotation Quaternion Y
+	 */
+	float qy;
+	
+	/**
+	 * Camera (Tango) rotation Quaternion Z
+	 */
+	float qz;
+	
+	/**
+	 * Camera (Tango) rotation Quaternion W
+	 */
+	float qw;
+	
+	/**
+	 * Camera (Tango) vertical field of View
+	 */
 	float verticalFOV;
 
+	/**
+	 * The width of the viewport showing the Tango image
+	 */
 	int width;
+	
+	/**
+	 * The height of the viewport showing the Tango image
+	 */
 	int height;
+	
+	/**
+	 * The renderer near plane
+	 */
 	final float near = 0.01f;
+	
+	/**
+	 * The renderer far plane
+	 */
 	final float far = 100.0f;
 
-
-	ArrayList<Billboard> markers;
-
+	/**
+	 * An array list of Billboards
+	 */
+	ArrayList<Billboard> billboards;
+	
+	////////////////////////////////////////////////
+	// GETTERS/SETTERS
+	////////////////////////////////////////////////
+	/**
+	 * Set the camera (Tango) position
+	 */
+	public void setCameraPosition(float x, float y, float z) {
+		this.cameraX=x;
+		this.cameraY=y;
+		this.cameraZ=z;
+	}
 
 	/**
-	 * Set the camera position
+	 * Set the camera (Tango) rotation Quaternion components
 	 */
-	public void dropMarker() {
+	public void setCameraAngles(float x, float y, float z, float w) {
+		this.qx=x;
+		this.qy=y;
+		this.qz=z;
+		this.qw=w;
+	}
+
+	/**
+	 * Return the vertex shader for the render
+	 */
+	protected String getVertexShader()
+	{
+		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_vertex_shader);
+	}
+
+	/**
+	 * Return the fragment shader for the renderer
+	 */
+	protected String getFragmentShader()
+	{
+		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_fragment_shader);
+	}
+
+	/**
+	 * Return the underlying PointCloud
+	 */
+	public PointCloud getPointCloud() {
+		return mPointCloud;
+	}
+	
+	////////////////////////////////////////////////
+	// METHODS
+	////////////////////////////////////////////////
+	/**
+	 * Create a billboard at the average point cloud depth in front of the Tango
+	 * along the Tango's line of sight
+	 */
+	public void createBillboard() {
 				
-		Billboard newBB= new Billboard(mTextureDataHandles[markers.size()], d);
+		Billboard newBB= new Billboard(mTextureDataHandles[billboards.size()], d);
 		float averageDepth = mPointCloud.getAverageZ();
 
 		//Project the marker out in front of camera		
 		Quaternion q= new Quaternion(qx,qy,qz,qw);	
 		
 		Vector3f rv = q.getEulerAngles();
-
-
 		Log.i(TAG, "rv: " + rv.x + " " + rv.y + " " + rv.z);
-
-		//Drop at Tango position
-		/*		
-		Matrix4f deviceT = new Matrix4f();
-		deviceT.translate(this.x, this.y, this.z);
-		Matrix4f world = rot.multiplyMatrix(deviceT);
-		Matrix4f result = world;
-		 */
-
-
-		//Rotates around the drop point to the left
-		/*
-		Matrix4f bbLocal = new Matrix4f();		
-		bbLocal.translate(0, averageDepth, 0);
-
-		Matrix4f rot = new Matrix4f();
-		rot.rotate(rv.x, -1, 0, 0);
-		rot.rotate(rv.y, 0, -1, 0);
-		rot.rotate(rv.z, 0, 0, -1);
-
-		bbLocal.translate(this.x, this.y, this.z);
-		bbLocal.multiplyMatrix(rot);
-
-		Matrix4f world = bbLocal;				
-		Matrix4f result = world.multiplyMatrix(bbLocal);
-		 */
-
-		//Rotates around the drop point to the front
-		/*
-		Matrix4f bbLocal = new Matrix4f();		
-		bbLocal.translate(0, averageDepth, 0);		
-		bbLocal.rotate(rv.x, -1, 0, 0);
-		bbLocal.rotate(rv.y, 0, -1, 0);
-		bbLocal.rotate(rv.z, 0, 0, -1);
-		Matrix4f world = new Matrix4f();
-		world.translate(this.x, this.y, this.z);				
-		Matrix4f result = world.multiplyMatrix(bbLocal);
-		 */
-
+	
 		float[] m = new float[16];
 		float[] r = new float[16];
-		float[] w = new float[16];
-		float[] a = new float[16];
+		float[] w = new float[16];		
 		float[] b = new float[16];
-		float[] c = new float[16];
+		
 		//BILLBOARD IN TANGO SPACE
 		Matrix.setIdentityM(m, 0);
 		Matrix.translateM(m, 0, 0.0f, 0.1f,0.0f);		
@@ -176,25 +236,8 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		
 		//WORLD MATRIX
 		Matrix.setIdentityM(w, 0);
-		Matrix.translateM(w, 0, x,y,z);		
-
-		//NO
-		//Matrix.multiplyMM(a, 0, m, 0, r, 0);		
-		//Matrix.multiplyMM(b, 0, w, 0, a, 0);
-
-		//NO
-		//Matrix.multiplyMM(a, 0, m, 0, r, 0);		
-		//Matrix.multiplyMM(b, 0, a, 0, w, 0);
-
-		//NO -- Breathing
-		//Matrix.multiplyMM(a, 0, r, 0, m, 0);		
-		//Matrix.multiplyMM(b, 0, a, 0, w, 0);
-
+		Matrix.translateM(w, 0, cameraX,cameraY,cameraZ);		
 	
-		//VERY CLOSE
-		//Matrix.multiplyMM(a, 0, r, 0, w, 0);		
-		//Matrix.multiplyMM(b, 0, m, 0, w, 0);
-
 		float[] o = new float[4];
 		float[] p = new float[4];
 		o[0]=0;
@@ -203,8 +246,6 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		o[3]=0.0f;
 		
 		Matrix.multiplyMV(p, 0, r, 0, o, 0);	
-		
-		Log.i(TAG, "p: " + p[0] + " " + p[1] + " " + p[2]);
 		
 		//BILLBOARD IN TANGO SPACE
 		Matrix.setIdentityM(m, 0);
@@ -216,106 +257,12 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		//Apply here
 		Vector3f bbWorldT = result.getTranslation();
 		newBB.setPosition(bbWorldT.x,  bbWorldT.y,  bbWorldT.z);
-		markers.add(newBB);
+		billboards.add(newBB);
 	}
 
-	/**
-	 * Set the camera position
-	 */
-	public void setCameraPosition(float x, float y, float z) {
-		this.x=x;
-		this.y=y;
-		this.z=z;
-	}
-
-	/**
-	 * Set the camera Euler rotation angles
-	 */
-	public void setCameraAngles(float x, float y, float z, float w) {
-		this.qx=x;
-		this.qy=y;
-		this.qz=z;
-		this.qw=w;
-	}
-
-	/**
-	 * Initialize the model data.
-	 */
-	public OpenGL2PointCloudRenderer(final Context activityContext, int maxDepthPoints, double aVerticalFOV) {
-		mMaxDepthPoints = maxDepthPoints;	      
-		markers = new ArrayList<Billboard>();     
-		mActivityContext = activityContext;
-		verticalFOV = new Float(aVerticalFOV).floatValue();
-
-	}
-
-	protected String getVertexShaderOLD()
-	{
-		// TODO: Explain why we normalize the vectors, explain some of the vector math behind it all. Explain what is eye space.
-		final String vertexShader =
-				"uniform mat4 u_MVPMatrix;      \n"             // A constant representing the combined model/view/projection matrix.
-				+ "uniform mat4 u_MVMatrix;       \n"         // A constant representing the combined model/view matrix.      
-				+ "uniform vec3 u_LightPos;       \n"     // The position of the light in eye space.
-
-				+ "attribute vec4 a_Position;     \n"         // Per-vertex position information we will pass in.
-				+ "attribute vec4 a_Color;        \n"         // Per-vertex color information we will pass in.
-				+ "attribute vec3 a_Normal;       \n"         // Per-vertex normal information we will pass in.
-
-				+ "varying vec4 v_Color;          \n"         // This will be passed into the fragment shader.
-
-				+ "void main()                    \n"         // The entry point for our vertex shader.
-				+ "{                              \n"         
-				// Transform the vertex into eye space.
-				+ "   vec3 modelViewVertex = vec3(u_MVMatrix * a_Position);              \n"
-				// Transform the normal's orientation into eye space.
-				+ "   vec3 modelViewNormal = vec3(u_MVMatrix * vec4(a_Normal, 0.0));     \n"
-				// Will be used for attenuation.
-				+ "   float distance = length(u_LightPos - modelViewVertex);             \n"
-				// Get a lighting direction vector from the light to the vertex.
-				+ "   vec3 lightVector = normalize(u_LightPos - modelViewVertex);        \n"
-				// Calculate the dot product of the light vector and vertex normal. If the normal and light vector are
-				// pointing in the same direction then it will get max illumination.
-				+ "   float diffuse = max(dot(modelViewNormal, lightVector), 5.1);       \n"                                                                                                                            
-				// Attenuate the light based on distance.
-				+ "   diffuse = diffuse * (1.0 / (1.0 + (0.0025 * distance * distance)));  \n"
-				// Multiply the color by the illumination level. It will be interpolated across the triangle.
-				+ "   v_Color = a_Color * diffuse;                                       \n"   
-				// gl_Position is a special variable used to store the final position.
-				// Multiply the vertex by the matrix to get the final point in normalized screen coordinates.           
-				+ "   gl_Position = u_MVPMatrix * a_Position;                            \n"     
-				+ "}                                                                     \n"; 
-
-		return vertexShader;
-	}
-
-	protected String getFragmentShaderOLD()
-	{
-		final String fragmentShader =
-				"precision mediump float;       \n"             // Set the default precision to medium. We don't need as high of a 
-				// precision in the fragment shader.                            
-				+ "varying vec4 v_Color;          \n"         // This is the color from the vertex shader interpolated across the 
-				// triangle per fragment.                         
-				+ "void main()                    \n"         // The entry point for our fragment shader.
-				+ "{                              \n"
-				+ "   gl_FragColor = v_Color;     \n"         // Pass the color directly through the pipeline.                  
-				+ "}                              \n";
-
-		return fragmentShader;
-	}
-
-	protected String getVertexShader()
-	{
-		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_vertex_shader);
-	}
-
-	protected String getFragmentShader()
-	{
-		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_fragment_shader);
-	}
-
-	
 	/*
-	 * Get a resource ID given a string
+	 * A helper method to get a resource ID given a string variable.
+	 * Good for progamatically accessing android resources
 	 */
 	public int getAndroidDrawableId(String pDrawableName){
 		Log.i(TAG,pDrawableName);
@@ -324,6 +271,11 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	    
 	}
 	
+	
+	/*
+	 * (non-Javadoc)
+	 * @see android.opengl.GLSurfaceView.Renderer#onSurfaceCreated(javax.microedition.khronos.opengles.GL10, javax.microedition.khronos.egl.EGLConfig)
+	 */
 	@Override
 	public void onSurfaceCreated(GL10 glUnused, EGLConfig config) 
 	{
@@ -367,11 +319,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		mProgramHandle = createAndLinkProgram(vertexShaderHandle, fragmentShaderHandle,
 				new String[] {"a_Position",  "a_Color", "a_Normal", "a_TexCoordinate"});                                                                                                                                                          
 
-
-		// Load the textures
-		
-		
-		
+		// Load the billboard textures
 		mTextureDataHandles = new int[MAX_BILLBOARDS];
 		
 		for(int i=0; i < MAX_BILLBOARDS; i++) {
@@ -383,6 +331,10 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	}       
 
 
+	/*
+	 * (non-Javadoc)
+	 * @see android.opengl.GLSurfaceView.Renderer#onSurfaceChanged(javax.microedition.khronos.opengles.GL10, int, int)
+	 */
 	@Override
 	public void onSurfaceChanged(GL10 glUnused, int aWidth, int aHeight) 
 	{
@@ -458,13 +410,13 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		Matrix.rotateM(mViewMatrix, 0, rv.x, -1.0f, 0.0f, 0.0f); 
 		Matrix.rotateM(mViewMatrix, 0, rv.y, 0.0f, -1.0f, 0.0f); 
 		Matrix.rotateM(mViewMatrix, 0, rv.z, 0.0f, 0.0f, -1.0f); 
-		Matrix.translateM(mViewMatrix, 0, -x, -y, -z);
+		Matrix.translateM(mViewMatrix, 0, -cameraX, -cameraY, -cameraZ);
 
 		try {
-			Iterator<Billboard> it = markers.iterator();
+			Iterator<Billboard> it = billboards.iterator();
 			while(it.hasNext()) {
 				Billboard bb = it.next();
-				bb.setCameraPosition(x,y,z);
+				bb.setCameraPosition(cameraX,cameraY,cameraZ);
 				bb.setShader(mProgramHandle);
 				bb.drawBillboard( mMVPMatrix, mProjectionMatrix, mViewMatrix);
 			}
@@ -604,9 +556,19 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 
 		return programHandle;
 	}
+	
+	////////////////////////////////////////////////
+	// CONSTRUCTORS
+	////////////////////////////////////////////////	
+	/**
+	 * Initialize the model data.
+	 */
+	public OpenGL2PointCloudRenderer(final Context activityContext, int maxDepthPoints, double aVerticalFOV) {
+		mMaxDepthPoints = maxDepthPoints;	      
+		billboards = new ArrayList<Billboard>();     
+		mActivityContext = activityContext;
+		verticalFOV = new Float(aVerticalFOV).floatValue();
 
-	public PointCloud getPointCloud() {
-		return mPointCloud;
 	}
 
 }

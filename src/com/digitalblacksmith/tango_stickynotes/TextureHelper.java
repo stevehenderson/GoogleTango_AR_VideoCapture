@@ -1,4 +1,4 @@
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
 import android.content.Context;
 import android.graphics.Bitmap;

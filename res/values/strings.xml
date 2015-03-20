@@ -16,8 +16,8 @@
 -->
 <resources>
 
-    <string name="app_name">Project Tango Java Point Cloud</string>
-    <string name="menu_name"> Project Tango Java Point Cloud</string>
+    <string name="app_name">Tango Point Cloud Sticky Notes</string>
+    <string name="menu_name">Tango Point Cloud Sticky Notes</string>
     <string name="vertex_count">Number of Points:</string>
     <string name="serviceversion">Tango service version:</string>
     <string name="appversion">"App version: "</string>
@@ -29,21 +29,19 @@
      <string name="averageZ">"Average depth (m): "</string>
     
     <string name="frameDelta">"Frame delta time (ms): "</string>
-    <string name="pose">", position(m): "</string>
+    <string name="pose">"position(m): "</string>
     <string name="quat">", orientation: "</string>
     <string name="first_person">First</string>
     <string name="third_person">Third</string>
     <string name="top_down">Top</string>
     <string name="start">Start</string>
-    <string name="opengl1">OpenGL 1.0</string>
-    <string name="opengl2">OpenGL 2.0</string>
     <string name="autorecoveryon">Auto recovery on</string>
     <string name="autorecoveryoff">Auto recovery off</string>
-    <string name="pointCount">Point count: </string>
+    <string name="pointCount">, Point count: </string>
     <string name="TangoError">"Tango exception! Try again!"</string>
     <string name="TangoOutOfDateException">"Tango service outdated!"</string>
     <string name="resetmotiontracking">"Reset Motion Tracking"</string>
-    <string name="dropbox">"Drop Position Marker"</string>
+    <string name="dropbox">"Add Sticky Note"</string>
     <string name="motiontrackingpermission">"Motion Tracking permission needed!"</string>
     <string name="NA">"N/A"</string>
     <string name="pose_initializing">"initializing"</string>

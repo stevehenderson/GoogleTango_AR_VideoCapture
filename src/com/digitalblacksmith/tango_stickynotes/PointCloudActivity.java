@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
+import com.digitalblacksmith.tango_ar_pointcloud.R;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.Tango.OnTangoUpdateListener;
 import com.google.atap.tangoservice.TangoCameraIntrinsics;
@@ -76,21 +77,17 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 
 	private Tango mTango;
 	private TangoConfig mConfig;
-	private TextView mDeltaTextView;
-	private TextView mPoseCountTextView;
 	private TextView mPoseTextView;
 	private TextView mQuatTextView;
 	private TextView mPoseStatusTextView;
-	private TextView mTangoServiceVersionTextView;
-	private TextView mApplicationVersionTextView;
+	private TextView mTangoServiceVersionTextView;	
 	private TextView mTangoEventTextView;
 	private TextView mPointCountTextView;
 	private TextView mAverageZTextView;
 	private TextView mFrequencyTextView;
 	private float mPreviousTimeStamp;
 	private int mPreviousPoseStatus;
-	private int count;
-	private float mDeltaTime;
+	private int count;	
 	private Button mMotionResetButton;
 	private Button mDropBoxButton;
 	//private boolean mIsAutoRecovery;
@@ -193,10 +190,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 				ViewGroup.LayoutParams.FILL_PARENT)); 
 
 
-		mApplicationVersionTextView = (TextView) findViewById(R.id.appversion);
-
-		mApplicationVersionTextView.setText("OpenGL 2.0");
-
+		
 		// Button to reset motion tracking
 		mMotionResetButton = (Button) findViewById(R.id.resetmotion);
 		// Set up button click listeners
@@ -221,15 +215,13 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		// Text views for displaying translation and rotation data
 		mPoseTextView = (TextView) findViewById(R.id.pose);
 		mQuatTextView = (TextView) findViewById(R.id.quat);
-		mPoseCountTextView = (TextView) findViewById(R.id.posecount);
-		mDeltaTextView = (TextView) findViewById(R.id.deltatime);
+		
 		mTangoEventTextView = (TextView) findViewById(R.id.tangoevent);
 		mPointCountTextView = (TextView) findViewById(R.id.pointCount);
 		mAverageZTextView = (TextView) findViewById(R.id.averageZ);
 		mFrequencyTextView = (TextView) findViewById(R.id.frameDelta);
 
-		// Text views for the status of the pose data and Tango library versions
-		mPoseStatusTextView = (TextView) findViewById(R.id.status);
+		// Text views for the status of the pose data and Tango library versions		
 		mTangoServiceVersionTextView = (TextView) findViewById(R.id.version);
 
 		// Display the library version for debug purposes
@@ -246,7 +238,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 
 	private void dropBox() {
 		dropBoxPosition.setTo(lastPosition);
-		mDemoRenderer.dropMarker();
+		mDemoRenderer.createBillboard();
 	}
 
 	@Override
@@ -342,8 +334,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 					count = 0;
 				}
 				count++;
-				mPreviousPoseStatus = pose.statusCode;
-				mDeltaTime = (float) (pose.timestamp - mPreviousTimeStamp) * SECS_TO_MILLISECS;
+				mPreviousPoseStatus = pose.statusCode;				
 				mPreviousTimeStamp = (float) pose.timestamp;
 				// Update the OpenGL renderable objects with the new Tango Pose
 				// data
@@ -385,17 +376,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 						//Log.i(TAG,translationString);
 						mPoseTextView.setText(translationString);
 						mQuatTextView.setText(quaternionString);
-						mPoseCountTextView.setText(Integer.toString(count));
-						mDeltaTextView.setText(threeDec.format(mDeltaTime));
-						if (pose.statusCode == TangoPoseData.POSE_VALID) {
-							mPoseStatusTextView.setText(R.string.pose_valid);
-						} else if (pose.statusCode == TangoPoseData.POSE_INVALID) {
-							mPoseStatusTextView.setText(R.string.pose_invalid);
-						} else if (pose.statusCode == TangoPoseData.POSE_INITIALIZING) {
-							mPoseStatusTextView.setText(R.string.pose_initializing);
-						} else if (pose.statusCode == TangoPoseData.POSE_UNKNOWN) {
-							mPoseStatusTextView.setText(R.string.pose_unknown);
-						}
+						
 					}
 				});
 			}

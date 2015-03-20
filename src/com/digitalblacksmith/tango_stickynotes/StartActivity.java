@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_stickynotes;
 
+import com.digitalblacksmith.tango_ar_pointcloud.R;
 import com.google.atap.tangoservice.Tango;
 
 
@@ -35,8 +36,7 @@ public class StartActivity extends Activity implements View.OnClickListener {
 	public static final String OPENGL_VERSION = 
 			"com.projecttango.experiments.javamotiontracking.opengl_version";
 
-	private Button mOpenGL1Button;
-	private Button mOpenGL2Button;
+	private Button startButton;	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -46,24 +46,16 @@ public class StartActivity extends Activity implements View.OnClickListener {
 				Tango.TANGO_INTENT_ACTIVITYCODE);
 		setContentView(R.layout.start);
 		this.setTitle(R.string.app_name);
-		mOpenGL1Button = (Button) findViewById(R.id.opengl1);
-		mOpenGL2Button = (Button) findViewById(R.id.opengl2);
+		startButton = (Button) findViewById(R.id.startButton);
+		
 
-		mOpenGL1Button.setOnClickListener(this);
-		mOpenGL2Button.setOnClickListener(this);
+		startButton.setOnClickListener(this);		
 
 	}
 
 	@Override
 	public void onClick(View v) {
-		switch (v.getId()) {
-		case R.id.opengl1:
-			startMotionTracking(1.0);
-			break;
-		case R.id.opengl2:
-			startMotionTracking(2.0);
-			break;
-		}
+		startMotionTracking(2.0);
 	}
 
 	private void startMotionTracking(double d) {
