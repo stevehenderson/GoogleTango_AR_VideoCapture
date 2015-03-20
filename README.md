@@ -1,8 +1,10 @@
-# GoogleTango AugmentedReality PointCloud Test
+# Google Tango Point Cloud Sticky Notes 
 
-A simple Google Tango Augmented Reality application that uses Point Cloud data.
+A simple Google Tango augmented reality application that uses Point Cloud data to drop "sticky notes" into an augmented reality scene.  The point cloud is used to determine an average depth (from the camera) for the sticky note.  The sticky note is then anchored on this point.
 
-Written in Java.
+Written in Java and OpenGL 2.0.
+
+Video pending.
 
 **Lessons Learned**
 
