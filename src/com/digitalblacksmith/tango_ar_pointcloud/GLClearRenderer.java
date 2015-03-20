@@ -144,4 +144,11 @@ public class GLClearRenderer implements Renderer, DemoRenderer {
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT,
 				GL10.GL_NICEST);
 	}
+	
+	/**
+	 * Drop a marker
+	 */
+	public void dropMarker() {
+	
+	}
 }

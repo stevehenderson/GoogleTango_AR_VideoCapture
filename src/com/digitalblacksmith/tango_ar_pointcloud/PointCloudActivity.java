@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Google Inc. All Rights Reserved.
+  * Copyright 2014 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.digitalblacksmith.tango_ar_pointcloud;
 
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.Tango.OnTangoUpdateListener;
+import com.google.atap.tangoservice.TangoCameraIntrinsics;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
@@ -96,7 +97,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 
 	//private PCRenderer mOpenGL2Renderer;
 	private OpenGL2PointCloudRenderer mOpenGL2Renderer;
-	private DemoRenderer mDemoRenderer;
+	private OpenGL2PointCloudRenderer mDemoRenderer;
 	private GLSurfaceView mGLView;
 	
 	private SurfaceView surfaceView;
@@ -138,13 +139,22 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
 		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
-
+		TangoCameraIntrinsics ccIntrinsics;
+		ccIntrinsics = mTango.getCameraIntrinsics(0);
+		
+		double height = ccIntrinsics.height;
+		double fy = ccIntrinsics.fy;
+		
+		
+		double FOV = 2*Math.atan(0.5*height/fy);
+		Log.i(TAG, "FOV =" + FOV);
+		
 		// Configure OpenGL renderer
 		//mRenderer = new GLClearRenderer();
 		int maxDepthPoints = mConfig.getInt("max_point_cloud_elements");
 
-		mOpenGL2Renderer = new OpenGL2PointCloudRenderer(maxDepthPoints);
-
+		mOpenGL2Renderer = new OpenGL2PointCloudRenderer(this, maxDepthPoints, FOV);
+		
 		mDemoRenderer = mOpenGL2Renderer;
 		mOpenGL2Renderer.setFirstPersonView();
 		mGLView.setRenderer(mOpenGL2Renderer);
@@ -236,6 +246,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 
 	private void dropBox() {
 		dropBoxPosition.setTo(lastPosition);
+		mDemoRenderer.dropMarker();
 	}
 
 	@Override
@@ -336,7 +347,9 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 				mPreviousTimeStamp = (float) pose.timestamp;
 				// Update the OpenGL renderable objects with the new Tango Pose
 				// data
-				float[] translation = pose.getTranslationAsFloats();
+				mOpenGL2Renderer.getModelMatCalculator().updateModelMatrix(
+	                        pose.getTranslationAsFloats(),
+	                        pose.getRotationAsFloats());
 
 				mGLView.requestRender();
 
@@ -357,7 +370,7 @@ public class PointCloudActivity extends Activity implements View.OnClickListener
 						float y = (float) pose.translation[1];
 						float z = (float) pose.translation[2];
 
-						mDemoRenderer.setCameraPosition(x-dropBoxPosition.x, y-dropBoxPosition.y, z-dropBoxPosition.z);
+						mDemoRenderer.setCameraPosition(x, y,z );
 
 						lastPosition.setTo(x, y, z);
 

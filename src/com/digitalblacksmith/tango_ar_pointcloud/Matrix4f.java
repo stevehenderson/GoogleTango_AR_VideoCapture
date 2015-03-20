@@ -279,6 +279,16 @@ public void divide(float f)
 	}
 
 
+	public Vector3f getTranslation()
+	{
+		Vector3f translate = new Vector3f();
+		translate.x = matrix[12]; 
+		translate.y = matrix[13];
+		translate.z = matrix[14];
+		return translate;
+	}
+
+	
 	public void translate(float x, float y, float z)
 	{
 		clear();

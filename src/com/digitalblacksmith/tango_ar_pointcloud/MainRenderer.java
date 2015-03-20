@@ -197,5 +197,11 @@ public class MainRenderer implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 		return program;
 	}
 
+	/**
+	 * Drop a marker
+	 */
+	public void dropMarker() {
+	
+	}
 
 }

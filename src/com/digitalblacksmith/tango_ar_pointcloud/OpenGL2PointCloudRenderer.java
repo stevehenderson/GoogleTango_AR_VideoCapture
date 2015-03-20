@@ -1,8 +1,11 @@
 package com.digitalblacksmith.tango_ar_pointcloud;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -10,6 +13,9 @@ import javax.microedition.khronos.opengles.GL10;
 import com.projecttango.tangoutils.Renderer;
 import com.projecttango.tangoutils.renderables.PointCloud;
 
+import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -24,14 +30,15 @@ import android.util.Log;
  * https://code.google.com/p/android-tes/source/browse/trunk/opengl+example/android/AndroidOpenGLESLessons/src/com/learnopengles/android/lesson2/LessonTwoRenderer.java?r=226
  */
 public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView.Renderer, DemoRenderer {
+	
+	
+	public final int MAX_BILLBOARDS = 21;
+	
+	
 	/** Used for debug logs. */
-	private static final String TAG = "LessonTwoRenderer";
+	private static final String TAG = "OpenGL2PointCloudRenderer";
 
-	/**
-	 * Store the model matrix. This matrix is used to move models from object space (where each model can be thought
-	 * of being located at the center of the universe) to world space.
-	 */
-	private float[] mModelMatrix = new float[16];
+	private final Context mActivityContext;
 
 	/**
 	 * Store the view matrix. This can be thought of as our camera. This matrix transforms world space to eye space;
@@ -42,6 +49,9 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/** Store the projection matrix. This is used to project the scene onto a 2D viewport. */
 	private float[] mProjectionMatrix = new float[16];
 
+
+	private float[] mProjectionMatrixFishEye = new float[16];
+
 	/** Allocate storage for the final combined matrix. This will be passed into the shader program. */
 	private float[] mMVPMatrix = new float[16];
 
@@ -49,41 +59,6 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	 * Stores a copy of the model matrix specifically for the light position.
 	 */
 	private float[] mLightModelMatrix = new float[16];      
-
-	/** Store our model data in a float buffer. */
-	private final FloatBuffer mCubePositions;
-	private final FloatBuffer mCubeColors;
-	private final FloatBuffer mCubeNormals;
-
-	/** This will be used to pass in the transformation matrix. */
-	private int mMVPMatrixHandle;
-
-	/** This will be used to pass in the modelview matrix. */
-	private int mMVMatrixHandle;
-
-	/** This will be used to pass in the light position. */
-	private int mLightPosHandle;
-
-	/** This will be used to pass in model position information. */
-	private int mPositionHandle;
-
-	/** This will be used to pass in model color information. */
-	private int mColorHandle;
-
-	/** This will be used to pass in model normal information. */
-	private int mNormalHandle;
-
-	/** How many bytes per float. */
-	private final int mBytesPerFloat = 4;   
-
-	/** Size of the position data in elements. */
-	private final int mPositionDataSize = 3;        
-
-	/** Size of the color data in elements. */
-	private final int mColorDataSize = 4;   
-
-	/** Size of the normal data in elements. */
-	private final int mNormalDataSize = 3;
 
 	/** Used to hold a light centered on the origin in model space. We need a 4th coordinate so we can get translations to work when
 	 *  we multiply this by our transformation matrices. */
@@ -96,23 +71,153 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	private final float[] mLightPosInEyeSpace = new float[4];
 
 	/** This is a handle to our per-vertex cube shading program. */
-	private int mPerVertexProgramHandle;
+	private int mProgramHandle;
 
 	/** This is a handle to our light point program. */
 	private int mPointProgramHandle;        
 
-
-	 private PointCloud mPointCloud;
-	 private int mMaxDepthPoints;
 	
+	
+	
+
+	/** This is a handle to our texture data. */
+	private int[] mTextureDataHandles;
+
+
+	private PointCloud mPointCloud;
+	private int mMaxDepthPoints;
+
 	/**
 	 * Cube scale
 	 */
-	float d = 0.1f;
+	float d = 0.05f;
 
 	float x,y,z;
 	float qx,qy,qz,qw;
 
+	float verticalFOV;
+
+	int width;
+	int height;
+	final float near = 0.01f;
+	final float far = 100.0f;
+
+
+	ArrayList<Billboard> markers;
+
+
+	/**
+	 * Set the camera position
+	 */
+	public void dropMarker() {
+				
+		Billboard newBB= new Billboard(mTextureDataHandles[markers.size()], d);
+		float averageDepth = mPointCloud.getAverageZ();
+
+		//Project the marker out in front of camera		
+		Quaternion q= new Quaternion(qx,qy,qz,qw);	
+		
+		Vector3f rv = q.getEulerAngles();
+
+
+		Log.i(TAG, "rv: " + rv.x + " " + rv.y + " " + rv.z);
+
+		//Drop at Tango position
+		/*		
+		Matrix4f deviceT = new Matrix4f();
+		deviceT.translate(this.x, this.y, this.z);
+		Matrix4f world = rot.multiplyMatrix(deviceT);
+		Matrix4f result = world;
+		 */
+
+
+		//Rotates around the drop point to the left
+		/*
+		Matrix4f bbLocal = new Matrix4f();		
+		bbLocal.translate(0, averageDepth, 0);
+
+		Matrix4f rot = new Matrix4f();
+		rot.rotate(rv.x, -1, 0, 0);
+		rot.rotate(rv.y, 0, -1, 0);
+		rot.rotate(rv.z, 0, 0, -1);
+
+		bbLocal.translate(this.x, this.y, this.z);
+		bbLocal.multiplyMatrix(rot);
+
+		Matrix4f world = bbLocal;				
+		Matrix4f result = world.multiplyMatrix(bbLocal);
+		 */
+
+		//Rotates around the drop point to the front
+		/*
+		Matrix4f bbLocal = new Matrix4f();		
+		bbLocal.translate(0, averageDepth, 0);		
+		bbLocal.rotate(rv.x, -1, 0, 0);
+		bbLocal.rotate(rv.y, 0, -1, 0);
+		bbLocal.rotate(rv.z, 0, 0, -1);
+		Matrix4f world = new Matrix4f();
+		world.translate(this.x, this.y, this.z);				
+		Matrix4f result = world.multiplyMatrix(bbLocal);
+		 */
+
+		float[] m = new float[16];
+		float[] r = new float[16];
+		float[] w = new float[16];
+		float[] a = new float[16];
+		float[] b = new float[16];
+		float[] c = new float[16];
+		//BILLBOARD IN TANGO SPACE
+		Matrix.setIdentityM(m, 0);
+		Matrix.translateM(m, 0, 0.0f, 0.1f,0.0f);		
+
+		//TANGO ROTATION
+		Matrix.setIdentityM(r, 0);	
+		Matrix.setRotateEulerM(r, 0, -1*(rv.x-90), rv.y, -1*rv.z);
+		
+		//WORLD MATRIX
+		Matrix.setIdentityM(w, 0);
+		Matrix.translateM(w, 0, x,y,z);		
+
+		//NO
+		//Matrix.multiplyMM(a, 0, m, 0, r, 0);		
+		//Matrix.multiplyMM(b, 0, w, 0, a, 0);
+
+		//NO
+		//Matrix.multiplyMM(a, 0, m, 0, r, 0);		
+		//Matrix.multiplyMM(b, 0, a, 0, w, 0);
+
+		//NO -- Breathing
+		//Matrix.multiplyMM(a, 0, r, 0, m, 0);		
+		//Matrix.multiplyMM(b, 0, a, 0, w, 0);
+
+	
+		//VERY CLOSE
+		//Matrix.multiplyMM(a, 0, r, 0, w, 0);		
+		//Matrix.multiplyMM(b, 0, m, 0, w, 0);
+
+		float[] o = new float[4];
+		float[] p = new float[4];
+		o[0]=0;
+		o[1]=averageDepth;
+		o[2]=0;
+		o[3]=0.0f;
+		
+		Matrix.multiplyMV(p, 0, r, 0, o, 0);	
+		
+		Log.i(TAG, "p: " + p[0] + " " + p[1] + " " + p[2]);
+		
+		//BILLBOARD IN TANGO SPACE
+		Matrix.setIdentityM(m, 0);
+		Matrix.translateM(m, 0, p[0], p[1],p[2]);		
+		
+		Matrix.multiplyMM(b, 0, m, 0, w, 0);
+		
+		Matrix4f result= new Matrix4f(b);				
+		//Apply here
+		Vector3f bbWorldT = result.getTranslation();
+		newBB.setPosition(bbWorldT.x,  bbWorldT.y,  bbWorldT.z);
+		markers.add(newBB);
+	}
 
 	/**
 	 * Set the camera position
@@ -133,194 +238,18 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		this.qw=w;
 	}
 
-
 	/**
 	 * Initialize the model data.
 	 */
-	public OpenGL2PointCloudRenderer(int maxDepthPoints) {
-        mMaxDepthPoints = maxDepthPoints;
-	      
-		// Define points for a cube.            
+	public OpenGL2PointCloudRenderer(final Context activityContext, int maxDepthPoints, double aVerticalFOV) {
+		mMaxDepthPoints = maxDepthPoints;	      
+		markers = new ArrayList<Billboard>();     
+		mActivityContext = activityContext;
+		verticalFOV = new Float(aVerticalFOV).floatValue();
 
-		// X, Y, Z
-		final float[] cubePositionData =
-			{
-				// In OpenGL counter-clockwise winding is default. This means that when we look at a triangle, 
-				// if the points are counter-clockwise we are looking at the "front". If not we are looking at
-				// the back. OpenGL has an optimization where all back-facing triangles are culled, since they
-				// usually represent the backside of an object and aren't visible anyways.
-
-				// Front face
-				-d, d, d,                              
-				-d, -d, d,
-				d, d, d, 
-				-d, -d, d,                             
-				d, -d, d,
-				d, d, d,
-
-				// Right face
-				d, d, d,                               
-				d, -d, d,
-				d, d, -d,
-				d, -d, d,                              
-				d, -d, -d,
-				d, d, -d,
-
-				// Back face
-				d, d, -d,                              
-				d, -d, -d,
-				-d, d, -d,
-				d, -d, -d,                             
-				-d, -d, -d,
-				-d, d, -d,
-
-				// Left face
-				-d, d, -d,                             
-				-d, -d, -d,
-				-d, d, d, 
-				-d, -d, -d,                            
-				-d, -d, d, 
-				-d, d, d, 
-
-				// Top face
-				-d, d, -d,                             
-				-d, d, d, 
-				d, d, -d, 
-				-d, d, d,                              
-				d, d, d, 
-				d, d, -d,
-
-				// Bottom face
-				d, -d, -d,                             
-				d, -d, d, 
-				-d, -d, -d,
-				d, -d, d,                              
-				-d, -d, d,
-				-d, -d, -d,
-			};      
-
-		// R, G, B, A
-		final float[] cubeColorData =
-			{                               
-				// Front face (red)
-				1.0f, 0.0f, 0.0f, 1.0f,                         
-				1.0f, 0.0f, 0.0f, 1.0f,
-				1.0f, 0.0f, 0.0f, 1.0f,
-				1.0f, 0.0f, 0.0f, 1.0f,                         
-				1.0f, 0.0f, 0.0f, 1.0f,
-				1.0f, 0.0f, 0.0f, 1.0f,
-
-				// Right face (green)
-				0.0f, 1.0f, 0.0f, 1.0f,                         
-				0.0f, 1.0f, 0.0f, 1.0f,
-				0.0f, 1.0f, 0.0f, 1.0f,
-				0.0f, 1.0f, 0.0f, 1.0f,                         
-				0.0f, 1.0f, 0.0f, 1.0f,
-				0.0f, 1.0f, 0.0f, 1.0f,
-
-				// Back face (blue)
-				0.0f, 0.0f, 1.0f, 1.0f,                         
-				0.0f, 0.0f, 1.0f, 1.0f,
-				0.0f, 0.0f, 1.0f, 1.0f,
-				0.0f, 0.0f, 1.0f, 1.0f,                         
-				0.0f, 0.0f, 1.0f, 1.0f,
-				0.0f, 0.0f, 1.0f, 1.0f,
-
-				// Left face (yellow)
-				1.0f, 1.0f, 0.0f, 1.0f,                         
-				1.0f, 1.0f, 0.0f, 1.0f,
-				1.0f, 1.0f, 0.0f, 1.0f,
-				1.0f, 1.0f, 0.0f, 1.0f,                         
-				1.0f, 1.0f, 0.0f, 1.0f,
-				1.0f, 1.0f, 0.0f, 1.0f,
-
-				// Top face (cyan)
-				0.0f, 1.0f, 1.0f, 1.0f,                         
-				0.0f, 1.0f, 1.0f, 1.0f,
-				0.0f, 1.0f, 1.0f, 1.0f,
-				0.0f, 1.0f, 1.0f, 1.0f,                         
-				0.0f, 1.0f, 1.0f, 1.0f,
-				0.0f, 1.0f, 1.0f, 1.0f,
-
-				// Bottom face (magenta)
-				1.0f, 0.0f, 1.0f, 1.0f,                         
-				1.0f, 0.0f, 1.0f, 1.0f,
-				1.0f, 0.0f, 1.0f, 1.0f,
-				1.0f, 0.0f, 1.0f, 1.0f,                         
-				1.0f, 0.0f, 1.0f, 1.0f,
-				1.0f, 0.0f, 1.0f, 1.0f
-			};
-
-		// X, Y, Z
-		// The normal is used in light calculations and is a vector which points
-		// orthogonal to the plane of the surface. For a cube model, the normals
-		// should be orthogonal to the points of each face.
-		final float[] cubeNormalData =
-			{                                                                                               
-				// Front face
-				0.0f, 0.0f, 1.0f,                               
-				0.0f, 0.0f, 1.0f,
-				0.0f, 0.0f, 1.0f,
-				0.0f, 0.0f, 1.0f,                               
-				0.0f, 0.0f, 1.0f,
-				0.0f, 0.0f, 1.0f,
-
-				// Right face 
-				1.0f, 0.0f, 0.0f,                               
-				1.0f, 0.0f, 0.0f,
-				1.0f, 0.0f, 0.0f,
-				1.0f, 0.0f, 0.0f,                               
-				1.0f, 0.0f, 0.0f,
-				1.0f, 0.0f, 0.0f,
-
-				// Back face 
-				0.0f, 0.0f, -1.0f,                              
-				0.0f, 0.0f, -1.0f,
-				0.0f, 0.0f, -1.0f,
-				0.0f, 0.0f, -1.0f,                              
-				0.0f, 0.0f, -1.0f,
-				0.0f, 0.0f, -1.0f,
-
-				// Left face 
-				-1.0f, 0.0f, 0.0f,                              
-				-1.0f, 0.0f, 0.0f,
-				-1.0f, 0.0f, 0.0f,
-				-1.0f, 0.0f, 0.0f,                              
-				-1.0f, 0.0f, 0.0f,
-				-1.0f, 0.0f, 0.0f,
-
-				// Top face 
-				0.0f, 1.0f, 0.0f,                       
-				0.0f, 1.0f, 0.0f,
-				0.0f, 1.0f, 0.0f,
-				0.0f, 1.0f, 0.0f,                               
-				0.0f, 1.0f, 0.0f,
-				0.0f, 1.0f, 0.0f,
-
-				// Bottom face 
-				0.0f, -1.0f, 0.0f,                      
-				0.0f, -1.0f, 0.0f,
-				0.0f, -1.0f, 0.0f,
-				0.0f, -1.0f, 0.0f,                              
-				0.0f, -1.0f, 0.0f,
-				0.0f, -1.0f, 0.0f
-			};
-
-		// Initialize the buffers.
-		mCubePositions = ByteBuffer.allocateDirect(cubePositionData.length * mBytesPerFloat)
-				.order(ByteOrder.nativeOrder()).asFloatBuffer();                                                        
-		mCubePositions.put(cubePositionData).position(0);               
-
-		mCubeColors = ByteBuffer.allocateDirect(cubeColorData.length * mBytesPerFloat)
-				.order(ByteOrder.nativeOrder()).asFloatBuffer();                                                        
-		mCubeColors.put(cubeColorData).position(0);
-
-		mCubeNormals = ByteBuffer.allocateDirect(cubeNormalData.length * mBytesPerFloat)
-				.order(ByteOrder.nativeOrder()).asFloatBuffer();                                                        
-		mCubeNormals.put(cubeNormalData).position(0);
 	}
 
-	protected String getVertexShader()
+	protected String getVertexShaderOLD()
 	{
 		// TODO: Explain why we normalize the vectors, explain some of the vector math behind it all. Explain what is eye space.
 		final String vertexShader =
@@ -359,7 +288,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		return vertexShader;
 	}
 
-	protected String getFragmentShader()
+	protected String getFragmentShaderOLD()
 	{
 		final String fragmentShader =
 				"precision mediump float;       \n"             // Set the default precision to medium. We don't need as high of a 
@@ -374,6 +303,27 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		return fragmentShader;
 	}
 
+	protected String getVertexShader()
+	{
+		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_vertex_shader);
+	}
+
+	protected String getFragmentShader()
+	{
+		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_fragment_shader);
+	}
+
+	
+	/*
+	 * Get a resource ID given a string
+	 */
+	public int getAndroidDrawableId(String pDrawableName){
+		Log.i(TAG,pDrawableName);
+		Log.i(TAG,mActivityContext.getPackageName());
+	    return mActivityContext.getResources().getIdentifier(pDrawableName, "drawable", mActivityContext.getPackageName());
+	    
+	}
+	
 	@Override
 	public void onSurfaceCreated(GL10 glUnused, EGLConfig config) 
 	{
@@ -385,9 +335,9 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 
 		// Enable depth testing
 		GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-		
+
 		mPointCloud = new PointCloud(mMaxDepthPoints);
-		
+
 		// Position the eye in front of the origin.
 		final float eyeX = 0.0f;
 		final float eyeY = 0.0f;
@@ -414,37 +364,33 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		final int vertexShaderHandle = compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);            
 		final int fragmentShaderHandle = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);              
 
-		mPerVertexProgramHandle = createAndLinkProgram(vertexShaderHandle, fragmentShaderHandle, 
-				new String[] {"a_Position",  "a_Color", "a_Normal"});                                                                                                                                                          
+		mProgramHandle = createAndLinkProgram(vertexShaderHandle, fragmentShaderHandle,
+				new String[] {"a_Position",  "a_Color", "a_Normal", "a_TexCoordinate"});                                                                                                                                                          
 
-		// Define a simple shader program for our point.
-		final String pointVertexShader =
-				"uniform mat4 u_MVPMatrix;      \n"             
-						+     "attribute vec4 a_Position;     \n"             
-						+ "void main()                    \n"
-						+ "{                              \n"
-						+ "   gl_Position = u_MVPMatrix   \n"
-						+ "               * a_Position;   \n"
-						+ "   gl_PointSize = 5.0;         \n"
-						+ "}                              \n";
 
-		final String pointFragmentShader = 
-				"precision mediump float;       \n"                                               
-						+ "void main()                    \n"
-						+ "{                              \n"
-						+ "   gl_FragColor = vec4(1.0,    \n" 
-						+ "   1.0, 1.0, 1.0);             \n"
-						+ "}                              \n";
+		// Load the textures
+		
+		
+		
+		mTextureDataHandles = new int[MAX_BILLBOARDS];
+		
+		for(int i=0; i < MAX_BILLBOARDS; i++) {
+			int h = getAndroidDrawableId("r" + i);
+			mTextureDataHandles[i] = TextureHelper.loadTexture(mActivityContext, h);
+			Log.i(TAG,"loaded mTextureDataHandle" +i);				
+		}
 
-		final int pointVertexShaderHandle = compileShader(GLES20.GL_VERTEX_SHADER, pointVertexShader);
-		final int pointFragmentShaderHandle = compileShader(GLES20.GL_FRAGMENT_SHADER, pointFragmentShader);
-		mPointProgramHandle = createAndLinkProgram(pointVertexShaderHandle, pointFragmentShaderHandle, 
-				new String[] {"a_Position"});                 
 	}       
 
+
 	@Override
-	public void onSurfaceChanged(GL10 glUnused, int width, int height) 
+	public void onSurfaceChanged(GL10 glUnused, int aWidth, int aHeight) 
 	{
+
+
+		this.width = aWidth;
+		this.height = aHeight;
+
 		// Set the OpenGL viewport to the same size as the surface.
 		GLES20.glViewport(0, 0, width, height);
 
@@ -454,7 +400,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		final float near = 0.01f;
 		final float far = 100.0f;
 
-		float fov = 30; // degrees, try also 45, or different number if you like
+		float fov = 57.295f*verticalFOV; // degrees, try also 45, or different number if you like
 		float top = (float) Math.tan(fov * 1.0*Math.PI / 360.0f) * near;
 		float bottom = -top;
 		float left = ratio * bottom;
@@ -466,22 +412,23 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	@Override
 	public void onDrawFrame(GL10 glUnused) 
 	{
+
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);         
 
 		// Position the eye in front of the origin.
-		final float eyeX = 0.0f;
-		final float eyeY = -0.0f;
-		final float eyeZ = 0.0f;
+		float eyeX = 0.0f;
+		float eyeY = -0.0f;
+		float eyeZ = 0.0f;
 
 		// We are looking toward the distance
-		final float lookX = 0.0f;
-		final float lookY = 0.0f;
-		final float lookZ = -1.0f;
+		float lookX = 0.0f;
+		float lookY = 0.0f;
+		float lookZ = -1.0f;
 
 		// Set our up vector. This is where our head would be pointing were we holding the camera.
-		final float upX = 0.0f;
-		final float upY = 1.0f;
-		final float upZ = 0.0f;
+		float upX = 0.0f;
+		float upY = 1.0f;
+		float upZ = 0.0f;
 
 		// Set the view matrix. This matrix can be said to represent the camera position.
 		// NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination of a model and
@@ -493,15 +440,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		float angleInDegrees = (360.0f / 10000.0f) * ((int) time);                
 
 		// Set our per-vertex lighting program.
-		GLES20.glUseProgram(mPerVertexProgramHandle);
-
-		// Set program handles for cube drawing.
-		mMVPMatrixHandle = GLES20.glGetUniformLocation(mPerVertexProgramHandle, "u_MVPMatrix");
-		mMVMatrixHandle = GLES20.glGetUniformLocation(mPerVertexProgramHandle, "u_MVMatrix"); 
-		mLightPosHandle = GLES20.glGetUniformLocation(mPerVertexProgramHandle, "u_LightPos");
-		mPositionHandle = GLES20.glGetAttribLocation(mPerVertexProgramHandle, "a_Position");
-		mColorHandle = GLES20.glGetAttribLocation(mPerVertexProgramHandle, "a_Color");
-		mNormalHandle = GLES20.glGetAttribLocation(mPerVertexProgramHandle, "a_Normal"); 
+		GLES20.glUseProgram(mProgramHandle);
 
 		// Calculate position of the light. Rotate and then push into the distance.
 		Matrix.setIdentityM(mLightModelMatrix, 0);
@@ -512,72 +451,42 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		Matrix.multiplyMV(mLightPosInWorldSpace, 0, mLightModelMatrix, 0, mLightPosInModelSpace, 0);
 		Matrix.multiplyMV(mLightPosInEyeSpace, 0, mViewMatrix, 0, mLightPosInWorldSpace, 0);                        
 
-		Matrix.setIdentityM(mModelMatrix, 0);
+		//CAMERA
 		Quaternion q= new Quaternion(qx,qy,qz,qw);
-
 		Vector3f rv = q.getEulerAngles();
 
 		Matrix.rotateM(mViewMatrix, 0, rv.x, -1.0f, 0.0f, 0.0f); 
 		Matrix.rotateM(mViewMatrix, 0, rv.y, 0.0f, -1.0f, 0.0f); 
 		Matrix.rotateM(mViewMatrix, 0, rv.z, 0.0f, 0.0f, -1.0f); 
+		Matrix.translateM(mViewMatrix, 0, -x, -y, -z);
 
-		Matrix.translateM(mModelMatrix, 0, -10f*x, -10f*y, -10.0f*z);
+		try {
+			Iterator<Billboard> it = markers.iterator();
+			while(it.hasNext()) {
+				Billboard bb = it.next();
+				bb.setCameraPosition(x,y,z);
+				bb.setShader(mProgramHandle);
+				bb.drawBillboard( mMVPMatrix, mProjectionMatrix, mViewMatrix);
+			}
+		} catch(Exception e) {
+			Log.e(TAG,""+e);
+		}
 
-
-		drawCube();
-		
+		//TODO:  Fix rendering of point cloud
+		/*
+		// Create a new perspective projection matrix. The height will stay the same
+		// while the width will vary as per aspect ratio.
+		Matrix.setIdentityM(mViewMatrix, 0);
+		//Good one
+		Matrix.setLookAtM(mViewMatrix, 0, 0f, 0f, 0.5f, 0f, 0f, 0f, 0f, 1f, 0f);
 		mPointCloud.draw(mViewMatrix, mProjectionMatrix);
 		// Draw a point to indicate the light.
 		//GLES20.glUseProgram(mPointProgramHandle);        
 		//drawLight();
+		 * 
+		 */
 	}                               
 
-	/**
-	 * Draws a cube.
-	 */                     
-	private void drawCube()
-	{               
-		// Pass in the position information
-		mCubePositions.position(0);             
-		GLES20.glVertexAttribPointer(mPositionHandle, mPositionDataSize, GLES20.GL_FLOAT, false,
-				0, mCubePositions);        
-
-		GLES20.glEnableVertexAttribArray(mPositionHandle);        
-
-		// Pass in the color information
-		mCubeColors.position(0);
-		GLES20.glVertexAttribPointer(mColorHandle, mColorDataSize, GLES20.GL_FLOAT, false,
-				0, mCubeColors);        
-
-		GLES20.glEnableVertexAttribArray(mColorHandle);
-
-		// Pass in the normal information
-		mCubeNormals.position(0);
-		GLES20.glVertexAttribPointer(mNormalHandle, mNormalDataSize, GLES20.GL_FLOAT, false, 
-				0, mCubeNormals);
-
-		GLES20.glEnableVertexAttribArray(mNormalHandle);
-
-		// This multiplies the view matrix by the model matrix, and stores the result in the MVP matrix
-		// (which currently contains model * view).
-		Matrix.multiplyMM(mMVPMatrix, 0, mViewMatrix, 0, mModelMatrix, 0);   
-
-		// Pass in the modelview matrix.
-		GLES20.glUniformMatrix4fv(mMVMatrixHandle, 1, false, mMVPMatrix, 0);                
-
-		// This multiplies the modelview matrix by the projection matrix, and stores the result in the MVP matrix
-		// (which now contains model * view * projection).
-		Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
-
-		// Pass in the combined matrix.
-		GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0);
-
-		// Pass in the light position in eye space.        
-		GLES20.glUniform3f(mLightPosHandle, mLightPosInEyeSpace[0], mLightPosInEyeSpace[1], mLightPosInEyeSpace[2]);
-
-		// Draw the cube.
-		GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 36);                               
-	}       
 
 	/**
 	 * Draws a point representing the position of the light.
@@ -695,9 +604,9 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 
 		return programHandle;
 	}
-	
+
 	public PointCloud getPointCloud() {
-        return mPointCloud;
-    }
-	
+		return mPointCloud;
+	}
+
 }

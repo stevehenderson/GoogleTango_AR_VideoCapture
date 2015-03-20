@@ -684,4 +684,11 @@ public class OpenGL2Renderer implements GLSurfaceView.Renderer, DemoRenderer {
 
 		return programHandle;
 	}
+	
+	/**
+	 * Drop a marker
+	 */
+	public void dropMarker() {
+	
+	}
 }

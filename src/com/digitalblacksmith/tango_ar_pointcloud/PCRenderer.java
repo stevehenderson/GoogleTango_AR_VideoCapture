@@ -111,4 +111,11 @@ public class PCRenderer extends Renderer implements GLSurfaceView.Renderer, Demo
     public PointCloud getPointCloud() {
         return mPointCloud;
     }
+    
+    /**
+	 * Drop a marker
+	 */
+	public void dropMarker() {
+	
+	}
 }
