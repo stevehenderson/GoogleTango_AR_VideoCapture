@@ -1,8 +1,10 @@
 # GoogleTango AugmentedReality PointCloud Test
 
-A simple Google Tango Augmented Reality application that uses Point Cloud data.
+A simple Google Tango Augmented Reality application that uses Point Cloud data to drop "sticky notes" into an augmented reality scene.
 
 Written in Java.
+
+Video pending.
 
 **Lessons Learned**
 
