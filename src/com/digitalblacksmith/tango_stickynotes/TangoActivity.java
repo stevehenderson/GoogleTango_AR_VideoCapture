@@ -69,9 +69,9 @@ import java.util.ArrayList;
  * @author  Steve Henderson @stevehenderson 
  * 
  */
-public class PointCloudActivity extends Activity implements View.OnClickListener, SurfaceHolder.Callback  {
+public class TangoActivity extends Activity implements View.OnClickListener, SurfaceHolder.Callback  {
 
-	private static final String TAG = PointCloudActivity.class.getSimpleName();
+	private static final String TAG = TangoActivity.class.getSimpleName();
 	private static final int SECS_TO_MILLISECS = 1000;
 
 

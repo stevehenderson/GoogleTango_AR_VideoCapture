@@ -42,7 +42,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.digitalblacksmith.tango_stickynotes.PointCloudActivity"
+            android:name="com.digitalblacksmith.tango_stickynotes.TangoActivity"
         	android:label="@string/app_name" 
             android:screenOrientation="landscape"> 
         </activity>
