@@ -8,7 +8,8 @@ Written in Java and OpenGL 2.0.
 ![Tango Augmented Reality Sticky Notes](/demo.png?raw=true "Tango Augmented Reality Sticky Notes")
 
 
-Video pending.
+Video demo here:  https://youtu.be/Fk67D8ID-mE
+
 
 **Lessons Learned**
 
