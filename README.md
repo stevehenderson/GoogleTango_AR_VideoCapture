@@ -5,7 +5,7 @@ A simple Google Tango augmented reality (AR) application that uses Point Cloud d
 Written in Java and OpenGL 2.0.
 
 
-![Tango Augmented Reality Sticky Notes](/demo.jpg?raw=true "Tango Augmented Reality Sticky Notes")
+![Tango Augmented Reality Sticky Notes](/demo.png?raw=true "Tango Augmented Reality Sticky Notes")
 
 
 Video pending.
