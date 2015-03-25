@@ -1,22 +1,12 @@
-# Google Tango Augmented Reality Sticky Notes 
+# Google Tango Augmented Reality Video Capture
+
+**NOTE:  UNDER DEVELOPMENT**
 
 A simple Google Tango augmented reality (AR) application that uses Point Cloud data to drop "sticky notes" into an augmented reality scene.  The point cloud is used to determine an average depth (from the camera) for the sticky note.  The sticky note is then anchored on this point.
+
+The app also allows the user to take "snapshots" of the screen to save them for off line viewing.
 
 Written in Java and OpenGL 2.0.
 
 
-![Tango Augmented Reality Sticky Notes](/demo.png?raw=true "Tango Augmented Reality Sticky Notes")
 
-
-Video demo here:  https://youtu.be/Fk67D8ID-mE
-
-
-**Lessons Learned**
-
-Lighting is very important when trying to do AR on the Tango and use the Tango depth info:
-
-See my post here:
-
-http://stackoverflow.com/questions/28402718/dark-google-tango-camera-surface-when-using-depth-information/28415697#28415697
-
-Thanks to mengu@cgui for pointing out the underexposure issue
