@@ -1,6 +1,6 @@
 # Google Tango Augmented Reality Video Capture
 
-**This cide if for the Tango Jacobi API**
+**This code if for the Tango Jacobi API**
 
 **NOTE:  UNDER DEVELOPMENT**
 
