@@ -1,5 +1,7 @@
 # Google Tango Augmented Reality Video Capture
 
+**This cide if for the Tango Jacobi API**
+
 **NOTE:  UNDER DEVELOPMENT**
 
 A simple Google Tango augmented reality (AR) application that uses Point Cloud data to drop "sticky notes" into an augmented reality scene.  The point cloud is used to determine an average depth (from the camera) for the sticky note.  The sticky note is then anchored on this point.
