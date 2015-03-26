@@ -6,7 +6,7 @@ A simple Google Tango augmented reality (AR) application that uses Point Cloud d
 
 The app also allows the user to take "snapshots" of the screen to save them for offline viewing.
 
-
+When running the app, the user adds a "sticky note" and, at the same time, the app takes a picture and stored it to the SD card.
 
 Written in Java and OpenGL 2.0.
 
@@ -14,5 +14,8 @@ Written in Java and OpenGL 2.0.
 
 In the image above, the inset image is not part of the app.  It is the file that get's stored on the SD card and included for comparison.
 
+ISSUES:  This crashes often on my Tango.  I believe I am interfereing too much with the UI & Tango Threads.  I need to spend some time perfecting the concurrency aspects of the design.  More to follow!
 
+For more info, follow the conversations here:
 
+http://stackoverflow.com/questions/29189781/using-the-onframeavailable-in-jacobi-google-tango-api
