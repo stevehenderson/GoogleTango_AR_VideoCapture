@@ -450,7 +450,7 @@ public class TangoActivity extends Activity implements TangoCameraScreengrabCall
 			//Create the exploited object here!		
 
 			long fileprefix = System.currentTimeMillis();
-			String targetPath =Environment.getExternalStorageDirectory()  + "/" + StartActivity.SCREENCAPTURE_DIRECTORY + "/";
+			String targetPath =Environment.getExternalStorageDirectory()  + StartActivity.SCREENCAPTURE_DIRECTORY;
 			//String imageFileName = fileprefix + ".png";
 			String imageFileName = "r" + markerCount + ".png";
 			String fullPath = "error";

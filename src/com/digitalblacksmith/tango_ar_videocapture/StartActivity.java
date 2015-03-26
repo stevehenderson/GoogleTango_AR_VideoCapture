@@ -39,7 +39,7 @@ public class StartActivity extends Activity implements View.OnClickListener {
 			"com.projecttango.experiments.javamotiontracking.opengl_version";
 
 	
-	public final static String SCREENCAPTURE_DIRECTORY = "GoogleTangoARVideoCapture"; 
+	public final static String SCREENCAPTURE_DIRECTORY = "/GoogleTangoARVideoCapture/"; 
 	
 	private Button startButton;	
 	@Override
@@ -52,7 +52,7 @@ public class StartActivity extends Activity implements View.OnClickListener {
 		
 		
 		//Check if external storage location exists		
-		final String PATH = Environment.getExternalStorageDirectory() + "/" + SCREENCAPTURE_DIRECTORY + "/";
+		final String PATH = Environment.getExternalStorageDirectory() + SCREENCAPTURE_DIRECTORY ;
 		if(!(new File(PATH)).exists()) {
 			new File(PATH).mkdirs();
 		}
