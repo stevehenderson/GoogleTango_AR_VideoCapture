@@ -12,7 +12,7 @@ Written in Java and OpenGL 2.0.
 
 ![Tango Augmented Reality Video Capture](/screenshot.jpg?raw=true "Tango Augmented Reality Video Capture")
 
-//In the image above, a user tags a keyboard with a sticky note.  The  inset image (not rendered as part of the app's current view) represents  the corresponding file that get's stored on the SD card and included for comparison.//
+<i>In the image above, a user tags a keyboard with a sticky note.  The  inset image (not rendered as part of the app's current view) represents  the corresponding file that get's stored on the SD card and included for comparison.</i>
 
 I essentially set up a "man (renderer) in the middle" attack on the rendering pipeline. This approach intercepts the SetRenderer call from the TangoCameraPreview base class, and allows one to get access to the base renderer's OnDraw() method and the GL context. I then add additional methods to this extended renderer that allow reading of the GL buffer.
 
