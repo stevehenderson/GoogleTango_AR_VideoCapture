@@ -1,5 +1,5 @@
 /*
-  * Copyright 2014 Google Inc. All Rights Reserved.
+ * Copyright 2014 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
 
-import com.digitalblacksmith.tango_ar_pointcloud.R;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.Tango.OnTangoUpdateListener;
 import com.google.atap.tangoservice.TangoCameraIntrinsics;
+import com.google.atap.tangoservice.TangoCameraPreview;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
@@ -28,12 +28,19 @@ import com.google.atap.tangoservice.TangoInvalidException;
 import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
+import com.projecttango.tangoutils.renderables.PointCloud;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.graphics.PixelFormat;
+import android.media.ThumbnailUtils;
 import android.opengl.GLSurfaceView;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.ContactsContract.CommonDataKinds.Event;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -47,8 +54,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.IntBuffer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 
@@ -69,13 +80,14 @@ import java.util.ArrayList;
  * @author  Steve Henderson @stevehenderson 
  * 
  */
-public class TangoActivity extends Activity implements View.OnClickListener, SurfaceHolder.Callback  {
+public class TangoActivity extends Activity implements TangoCameraScreengrabCallback, View.OnClickListener {
+
+	private ReadableTangoCameraPreview tangoCameraPreview;
+	private Tango mTango;
 
 	private static final String TAG = TangoActivity.class.getSimpleName();
 	private static final int SECS_TO_MILLISECS = 1000;
 
-
-	private Tango mTango;
 	private TangoConfig mConfig;
 	private TextView mPoseTextView;
 	private TextView mQuatTextView;
@@ -88,6 +100,12 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 	private float mPreviousTimeStamp;
 	private int mPreviousPoseStatus;
 	private int count;	
+	private double FOV = 0.665313;
+	int maxDepthPoints = 20000;
+	int markerCount=0;
+	int MAX_BILLBOARDS = 5;
+	PointCloud mPointCloud;
+
 	private Button mMotionResetButton;
 	private Button mDropBoxButton;
 	//private boolean mIsAutoRecovery;
@@ -96,90 +114,24 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 	private OpenGL2PointCloudRenderer mOpenGL2Renderer;
 	private OpenGL2PointCloudRenderer mDemoRenderer;
 	private GLSurfaceView mGLView;
-	
-	private SurfaceView surfaceView;
+
+
 
 	private float mXyIjPreviousTimeStamp;
 	private float mCurrentTimeStamp;
 
 	boolean first_initialized = false;
-	
+
 	Surface tangoSurface;
 
 	Vector3f lastPosition;
 	Vector3f dropBoxPosition;
 
+	int bitmapBuffer[];
+	int bitmapSource[];
+	IntBuffer intBuffer;
 
-	/**
-	 * Set up the activity using OpenGL 20
-	 */
-	@SuppressWarnings("deprecation")
-	private void setUpOpenGL20() {
-
-		///////////////////////
-		//Create GLSurface
-		///////////////////////
-		// OpenGL view where all of the graphics are drawn
-		mGLView = new GLSurfaceView(this);
-		mGLView.setEGLContextClientVersion(2);
-		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
-		SurfaceHolder glSurfaceHolder = mGLView.getHolder();
-		glSurfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
-
-		////////////////////////////////////
-		// Instantiate the Tango service
-		///////////////////////////////////
-		mTango = new Tango(this);
-		// Create a new Tango Configuration and enable the MotionTrackingActivity API
-		mConfig = new TangoConfig();
-		mConfig = mTango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
-		mConfig.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
-
-		TangoCameraIntrinsics ccIntrinsics;
-		ccIntrinsics = mTango.getCameraIntrinsics(0);
-		
-		double height = ccIntrinsics.height;
-		double fy = ccIntrinsics.fy;
-		
-		
-		double FOV = 2*Math.atan(0.5*height/fy);
-		Log.i(TAG, "FOV =" + FOV);
-		
-		// Configure OpenGL renderer
-		//mRenderer = new GLClearRenderer();
-		int maxDepthPoints = mConfig.getInt("max_point_cloud_elements");
-
-		mOpenGL2Renderer = new OpenGL2PointCloudRenderer(this, maxDepthPoints, FOV);
-		
-		mDemoRenderer = mOpenGL2Renderer;
-		mOpenGL2Renderer.setFirstPersonView();
-		mGLView.setRenderer(mOpenGL2Renderer);
-		mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-		//setContentView(mGLView);
-
-
-		try {
-			setTangoListeners();
-		} catch (TangoErrorException e) {
-			Toast.makeText(getApplicationContext(), R.string.TangoError, Toast.LENGTH_SHORT).show();
-		} catch (SecurityException e) {
-			Toast.makeText(getApplicationContext(), R.string.motiontrackingpermission,
-					Toast.LENGTH_SHORT).show();
-		}
-
-		//////////////////////////
-		// Create Camera Surface
-		//////////////////////////
-		surfaceView = new SurfaceView(this);
-		SurfaceHolder activitySurfaceHolder = surfaceView.getHolder();
-		activitySurfaceHolder.addCallback(this);
-
-
-		//mGLView.setZOrderOnTop(true);
-		setContentView(mGLView);
-		addContentView( surfaceView, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
-		
+	private void setupUI() {
 		/////////////////////////
 		//Create UI Objects 
 		////////////////////////
@@ -190,7 +142,6 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 				ViewGroup.LayoutParams.FILL_PARENT)); 
 
 
-		
 		// Button to reset motion tracking
 		mMotionResetButton = (Button) findViewById(R.id.resetmotion);
 		// Set up button click listeners
@@ -201,21 +152,10 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 		// Set up button click listeners
 		mDropBoxButton.setOnClickListener(this);
 
-		//mOpenGL2Renderer.setFirstPersonView();
-
-	}
-
-
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		Intent intent = getIntent();
-		setUpOpenGL20();
-
 		// Text views for displaying translation and rotation data
 		mPoseTextView = (TextView) findViewById(R.id.pose);
 		mQuatTextView = (TextView) findViewById(R.id.quat);
-		
+
 		mTangoEventTextView = (TextView) findViewById(R.id.tangoevent);
 		mPointCountTextView = (TextView) findViewById(R.id.pointCount);
 		mAverageZTextView = (TextView) findViewById(R.id.averageZ);
@@ -224,106 +164,96 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 		// Text views for the status of the pose data and Tango library versions		
 		mTangoServiceVersionTextView = (TextView) findViewById(R.id.version);
 
-		// Display the library version for debug purposes
-		mTangoServiceVersionTextView.setText(mConfig.getString("tango_service_library_version"));
-
 		dropBoxPosition = new Vector3f();
 		lastPosition = new Vector3f();
 	}
 
-	private void motionReset() {
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		tangoCameraPreview = new ReadableTangoCameraPreview(this);
+		mTango = new Tango(this);
+		startActivityForResult(
+				Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
+				Tango.TANGO_INTENT_ACTIVITYCODE);
+
 		
-		mTango.resetMotionTracking();
-	}
+		tangoCameraPreview.setScreengrabCallback(this);
+		
+		///////////////////////
+		//Create GLSurface
+		///////////////////////
+		// OpenGL view where all of the graphics are drawn
+		mGLView = new GLSurfaceView(this);
+		mGLView.setEGLContextClientVersion(2);
+		mGLView.setEGLConfigChooser(8,8,8,8,16,0);
+		SurfaceHolder glSurfaceHolder = mGLView.getHolder();
+		glSurfaceHolder.setFormat(PixelFormat.TRANSLUCENT);
+		mOpenGL2Renderer = new OpenGL2PointCloudRenderer(this, maxDepthPoints, FOV, MAX_BILLBOARDS);
 
-	private void dropBox() {
-		dropBoxPosition.setTo(lastPosition);
-		mDemoRenderer.createBillboard();
-	}
-
-	@Override
-	protected void onPause() {
-		super.onPause();
-		Log.i(TAG, "OnPause");
-		try {
-			mTango.disconnect();
-			Log.i(TAG,"Pausing..TANGO disconnected");
-		} catch (TangoErrorException e) {
-			Toast.makeText(getApplicationContext(), R.string.TangoError, Toast.LENGTH_SHORT).show();
-		}
-
-	}
-
-	protected void onResume() {
-		super.onResume();
-		Log.i(TAG, "OnResume");
-
-		try {
-			//setTangoListeners();
-		} catch (TangoErrorException e) {
-			Log.e(TAG,e.toString());
-		} catch (SecurityException e) {
-			Log.e(TAG,e.toString());
-		}
-		try {           
-			if(first_initialized)mTango.connect(mConfig);
-		} catch (TangoOutOfDateException e) {
-			Log.e(TAG,e.toString());
-		} catch (TangoErrorException e) {
-			Log.e(TAG,e.toString());
-		}
-		try {
-			//setUpExtrinsics();
-		} catch (TangoErrorException e) {
-			Log.e(TAG,e.toString());
-		} catch (SecurityException e) {
-			Log.e(TAG,e.toString());
-		}
-
+		mDemoRenderer = mOpenGL2Renderer;
+		mGLView.setRenderer(mOpenGL2Renderer);
+		mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		setContentView(mGLView);
+		addContentView(tangoCameraPreview, new LayoutParams( LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT ) );
+		setupUI();
 	}
 
 	@Override
-	protected void onDestroy() {
-		super.onDestroy();
-	}
-
-	@Override
-	public void onClick(View v) {
-		switch (v.getId()) {
-		case R.id.resetmotion:
-			motionReset();
-			break;
-		case R.id.dropbox:
-			dropBox();
-			break;
-		default:
-			Log.w(TAG, "Unknown button click");
-			return;
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// Check which request we're responding to
+		if (requestCode == Tango.TANGO_INTENT_ACTIVITYCODE) {
+			// Make sure the request was successful
+			if (resultCode == RESULT_CANCELED) {
+				Toast.makeText(this, "Motion Tracking Permissions Required!",
+						Toast.LENGTH_SHORT).show();
+				finish();
+			} else {
+				startCameraPreview();
+			}
 		}
 	}
 
-	@Override
-	public boolean onTouchEvent(MotionEvent event) {
+	// Camera Preview
+	private void startCameraPreview() {
+		tangoCameraPreview.connectToTangoCamera(mTango,TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 
-		return false; 
-	}
+		// Must run UI changes on the UI thread. Running in the Tango
+		// service thread will result in an error.
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				int w = ReadableTangoCameraPreview.SCREEN_GRAB_W;
+				int h = ReadableTangoCameraPreview.SCREEN_GRAB_H;
+				//Create the exploited object here!		
+				//Create an image buffer to grab images
+				//int w = tangoCameraPreview.getWidth();
+				//int h = tangoCameraPreview.getHeight();		
+				Log.i(TAG,"TangoPreview w and h :" +w + "  " + h);
+				bitmapBuffer = new int[w * h];		
+				bitmapSource = new int[w * h];
+				intBuffer = IntBuffer.wrap(bitmapBuffer);
+				tangoCameraPreview.setIntBuffer(intBuffer);
+			}
+		});
 
+		TangoConfig config = mTango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
+		config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
+		config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
-	/**
-	 * Set up the TangoConfig and the listeners for the Tango service, then begin using the Motion
-	 * Tracking API. This is called in response to the user clicking the 'Start' Button.
-	 */
-	private void setTangoListeners() {
-		// Lock configuration and connect to Tango
-		// Select coordinate frame pair
-		final ArrayList<TangoCoordinateFramePair> framePairs = 
-				new ArrayList<TangoCoordinateFramePair>();
+		maxDepthPoints = config.getInt(TangoConfig.KEY_INT_MAXPOINTCLOUDELEMENTS);
+
+		Log.i(TAG, "maxpoints =" + maxDepthPoints);
+		mPointCloud = new PointCloud(maxDepthPoints);	
+
+		mTango.connect(config);
+		final ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<TangoCoordinateFramePair>();
 		framePairs.add(new TangoCoordinateFramePair(
 				TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
 				TangoPoseData.COORDINATE_FRAME_DEVICE));
-		// Listen for new Tango data
-		mTango.connectListener(framePairs, new OnTangoUpdateListener() {
 
+		mTango.connectListener(framePairs, new OnTangoUpdateListener() {
 			@Override
 			public void onPoseAvailable(final TangoPoseData pose) {
 				// Log whenever Motion Tracking enters a n invalid state
@@ -339,8 +269,8 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 				// Update the OpenGL renderable objects with the new Tango Pose
 				// data
 				mOpenGL2Renderer.getModelMatCalculator().updateModelMatrix(
-	                        pose.getTranslationAsFloats(),
-	                        pose.getRotationAsFloats());
+						pose.getTranslationAsFloats(),
+						pose.getRotationAsFloats());
 
 				mGLView.requestRender();
 
@@ -376,7 +306,7 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 						//Log.i(TAG,translationString);
 						mPoseTextView.setText(translationString);
 						mQuatTextView.setText(quaternionString);
-						
+
 					}
 				});
 			}
@@ -400,17 +330,14 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 					e.printStackTrace();
 				}
 				try {
-					TangoPoseData pointCloudPose = mTango.getPoseAtTime(
-							mCurrentTimeStamp, framePairs.get(0));
+					TangoPoseData pointCloudPose = mTango.getPoseAtTime(mCurrentTimeStamp, framePairs.get(0));
 
-					mOpenGL2Renderer.getPointCloud().UpdatePoints(buffer,
-							xyzIj.xyzCount);
+					mPointCloud.UpdatePoints(buffer,xyzIj.xyzCount);
 					mOpenGL2Renderer.getModelMatCalculator()
 					.updatePointCloudModelMatrix(
 							pointCloudPose.getTranslationAsFloats(),
 							pointCloudPose.getRotationAsFloats());
-					mOpenGL2Renderer.getPointCloud().setModelMatrix(
-							mOpenGL2Renderer.getModelMatCalculator()
+					mPointCloud.setModelMatrix(mOpenGL2Renderer.getModelMatCalculator()
 							.getPointCloudModelMatrixCopy());
 				} catch (TangoErrorException e) {
 					Toast.makeText(getApplicationContext(),
@@ -429,13 +356,9 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 					@Override
 					public void run() {
 						// Display number of points in the point cloud
-						mPointCountTextView.setText(Integer
-								.toString(xyzIj.xyzCount));
-						mFrequencyTextView.setText(""
-								+ threeDec.format(frameDelta));
-						mAverageZTextView.setText(""
-								+ threeDec.format(mOpenGL2Renderer.getPointCloud()
-										.getAverageZ()));
+						mPointCountTextView.setText(Integer.toString(xyzIj.xyzCount));
+						mFrequencyTextView.setText(""+ threeDec.format(frameDelta));
+						mAverageZTextView.setText(""+ threeDec.format(mPointCloud.getAverageZ()));
 					}
 				});
 			}
@@ -449,56 +372,146 @@ public class TangoActivity extends Activity implements View.OnClickListener, Sur
 					}
 				});
 			}
+
+			@Override
+			public void onFrameAvailable(int arg0) {				
+				tangoCameraPreview.onFrameAvailable();
+			}
 		});
 	}
 
+	@Override
+	protected void onPause() {
+		super.onPause();
+		mTango.disconnect();
+	}
 
-	private void setUpExtrinsics() {
-		// Get device to imu matrix.
-		TangoPoseData device2IMUPose = new TangoPoseData();
-		TangoCoordinateFramePair framePair = new TangoCoordinateFramePair();
-		framePair.baseFrame = TangoPoseData.COORDINATE_FRAME_IMU;
-		framePair.targetFrame = TangoPoseData.COORDINATE_FRAME_DEVICE;
-		device2IMUPose = mTango.getPoseAtTime(0.0, framePair);
-		// mRenderer.getModelMatCalculator().SetDevice2IMUMatrix(
-		//         device2IMUPose.getTranslationAsFloats(), device2IMUPose.getRotationAsFloats());
-
-		// Get color camera to imu matrix.
-		TangoPoseData color2IMUPose = new TangoPoseData();
-		framePair.baseFrame = TangoPoseData.COORDINATE_FRAME_IMU;
-		framePair.targetFrame = TangoPoseData.COORDINATE_FRAME_CAMERA_COLOR;
-		color2IMUPose = mTango.getPoseAtTime(0.0, framePair);
-
-		// mRenderer.getModelMatCalculator().SetColorCamera2IMUMatrix(
-		//        color2IMUPose.getTranslationAsFloats(), color2IMUPose.getRotationAsFloats());
+	private void dropBox() {
+		float averageDepth = mPointCloud.getAverageZ();		
+		mDemoRenderer.createBillboard(averageDepth);
+		tangoCameraPreview.takeSnapShot();
+		markerCount++;
+		if(markerCount >= MAX_BILLBOARDS) {
+			mDropBoxButton.setVisibility(View.INVISIBLE);
+		}
 	}
 
 	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		
-		Surface surface = holder.getSurface();
-		
-		if (surface.isValid()) {
-					
-			mTango.connectSurface(0, surface);
-			first_initialized=true;
-			mTango.connect(mConfig);
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.resetmotion:
+			//motionReset();
+			break;
+		case R.id.dropbox:
+			dropBox();
+			break;
+		default:
+			Log.w(TAG, "Unknown button click");
+			return;
+		}
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+
+		return false; 
+	}
+
+	public void newPhotoBuffer(final int w, final int h) {
+		SaveImageTask saveImageTask = new SaveImageTask();
+		saveImageTask.setHeight(h);
+		saveImageTask.setWidth(w);
+		saveImageTask.execute(intBuffer);
+	}
+
+	/***
+	 * An inner class to run an asynchronous task for the image creation
+	 * 
+	 * @author henderso
+	 *
+	 */
+	private class SaveImageTask extends AsyncTask<IntBuffer, Void, Event> {
+
+		int width;
+		int height;
+
+		public void setHeight(int h) { height =h; }
+		public void setWidth(int w) { width =w; }
+
+				/** The system calls this to perform work in a worker thread and
+		 * delivers it the parameters given to AsyncTask.execute() */
+		protected Event doInBackground(IntBuffer... aIntBuffer) {
+
+			int h = height;
+			int w = width;
+			Event eo = null;
+
+			String result = "foo";
+			//Create the exploited object here!		
+
+			long fileprefix = System.currentTimeMillis();
+			String targetPath =Environment.getExternalStorageDirectory()  + "/" + StartActivity.SCREENCAPTURE_DIRECTORY + "/";
+			//String imageFileName = fileprefix + ".png";
+			String imageFileName = "r" + markerCount + ".png";
+			String fullPath = "error";
+			fullPath =targetPath + imageFileName;
+			Log.i(TAG, "Grabbed an image in target path:" + fullPath);	
+
+
+			int offset1, offset2;
+			for (int i = 0; i <  h; i++) {
+				offset1 = i * w;
+				offset2 = (h - i - 1) * w;
+				for (int j = 0; j < w; j++) {
+					int texturePixel = bitmapBuffer[offset1 + j];
+					int blue = (texturePixel >> 16) & 0xff;
+					int red = (texturePixel << 16) & 0x00ff0000;
+					int pixel = (texturePixel & 0xff00ff00) | red | blue;
+					bitmapSource[offset2 + j] = pixel;
+				}
+			}
+
+			Bitmap image = Bitmap.createBitmap(bitmapSource, w, h, Bitmap.Config.ARGB_8888);
+			//Bitmap image = ThumbnailUtils.extractThumbnail(bitmap, 100, 100);
+
+			fullPath =targetPath + imageFileName;
+			//mTangoCameraScreengrabCallback.newPhoto(fullPath);
+
+			if(!(new File(targetPath)).exists()) {
+				new File(targetPath).mkdirs();
+			}
+			try {           
+				File targetDirectory = new File(targetPath);
+				File photo=new File(targetDirectory, imageFileName);
+				FileOutputStream fos=new FileOutputStream(photo.getPath());
+				image.compress(CompressFormat.PNG, 10, fos);          
+				fos.flush();
+				fos.close();
+
+				Log.i(TAG, "Grabbed an image in target path:" + fullPath);		
+
+
+			} catch (FileNotFoundException e) {
+				Log.e(TAG,"Exception " + e);
+				e.printStackTrace();
+			} catch (IOException e) {
+				Log.e(TAG,"Exception " + e);
+				e.printStackTrace();
+
+			}
+
+			return eo;
+
 
 		}
 
+		/** The system calls this to perform work in the UI thread and delivers
+		 * the result from doInBackground() */
+		protected void onPostExecute(Event eo) {
+			//Unused
+		}
 	}
 
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		// TODO Auto-generated method stub
 
-	}
-
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		mTango.disconnectSurface(0);
-
-	}
 
 }

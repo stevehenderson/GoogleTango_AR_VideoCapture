@@ -1,4 +1,4 @@
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
 
 /*
  * A simple Matrix4 class for OpenGL 1.0

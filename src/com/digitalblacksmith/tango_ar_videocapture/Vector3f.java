@@ -1,4 +1,4 @@
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
 
 
 /*

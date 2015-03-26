@@ -1,20 +1,33 @@
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import com.digitalblacksmith.tango_ar_pointcloud.R;
 import com.projecttango.tangoutils.Renderer;
 import com.projecttango.tangoutils.renderables.PointCloud;
 
+
+import com.digitalblacksmith.tango_ar_videocapture.Billboard;
+import com.digitalblacksmith.tango_ar_videocapture.Matrix4f;
+import com.digitalblacksmith.tango_ar_videocapture.Quaternion;
+import com.digitalblacksmith.tango_ar_videocapture.RawResourceReader;
+import com.digitalblacksmith.tango_ar_videocapture.TextureHelper;
+import com.digitalblacksmith.tango_ar_videocapture.Vector3f;
+
 import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.AsyncTask;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -32,7 +45,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/**
 	 * The number of possible billboards.  Ensure you have a texture in res/drawable to match
 	 */
-	public final int MAX_BILLBOARDS = 21;
+	private int maxBillboards = 5;
 	
 	/** Used for debug logs. */
 	private static final String TAG = "OpenGL2PointCloudRenderer";
@@ -69,6 +82,9 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/** Used to hold the transformed position of the light in eye space (after transformation via modelview matrix) */
 	private final float[] mLightPosInEyeSpace = new float[4];
 
+	
+	private Bitmap[] billBoardBitmaps;
+	
 	/** This is a handle to our per-vertex cube shading program. */
 	private int mProgramHandle;
 
@@ -78,10 +94,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/** This is a handle to our texture data. */
 	private int[] mTextureDataHandles;
 
-	/**
-	 * A Tango PointCloud object.  A bunch of points detected by the Tango 
-	 */
-	private PointCloud mPointCloud;
+
 	
 	/**
 	 * The maximum number of Points tracked by the Tango
@@ -176,8 +189,7 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	public void setCameraAngles(float x, float y, float z, float w) {
 		this.qx=x;
 		this.qy=y;
-		this.qz=z;
-		this.qw=w;
+		this.qz=z;		this.qw=w;
 	}
 
 	/**
@@ -196,12 +208,6 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		return RawResourceReader.readTextFileFromRawResource(mActivityContext, R.raw.per_pixel_fragment_shader);
 	}
 
-	/**
-	 * Return the underlying PointCloud
-	 */
-	public PointCloud getPointCloud() {
-		return mPointCloud;
-	}
 	
 	////////////////////////////////////////////////
 	// METHODS
@@ -210,11 +216,10 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	 * Create a billboard at the average point cloud depth in front of the Tango
 	 * along the Tango's line of sight
 	 */
-	public void createBillboard() {
+	public void createBillboard(float averageDepth) {
 				
 		Billboard newBB= new Billboard(mTextureDataHandles[billboards.size()], d);
-		float averageDepth = mPointCloud.getAverageZ();
-
+		
 		//Project the marker out in front of camera		
 		Quaternion q= new Quaternion(qx,qy,qz,qw);	
 		
@@ -288,8 +293,6 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		// Enable depth testing
 		GLES20.glEnable(GLES20.GL_DEPTH_TEST);
 
-		mPointCloud = new PointCloud(mMaxDepthPoints);
-
 		// Position the eye in front of the origin.
 		final float eyeX = 0.0f;
 		final float eyeY = 0.0f;
@@ -320,14 +323,15 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 				new String[] {"a_Position",  "a_Color", "a_Normal", "a_TexCoordinate"});                                                                                                                                                          
 
 		// Load the billboard textures
-		mTextureDataHandles = new int[MAX_BILLBOARDS];
-		
-		for(int i=0; i < MAX_BILLBOARDS; i++) {
+		mTextureDataHandles = new int[maxBillboards];
+
+		for(int i=0; i < maxBillboards; i++) {
 			int h = getAndroidDrawableId("r" + i);
 			mTextureDataHandles[i] = TextureHelper.loadTexture(mActivityContext, h);
 			Log.i(TAG,"loaded mTextureDataHandle" +i);				
 		}
 
+		
 	}       
 
 
@@ -387,21 +391,8 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 		// view matrix. In OpenGL 2, we can keep track of these matrices separately if we choose.
 		Matrix.setLookAtM(mViewMatrix, 0, eyeX, eyeY, eyeZ, lookX, lookY, lookZ, upX, upY, upZ);                
 
-		// Do a complete rotation every 10 seconds.
-		long time = SystemClock.uptimeMillis() % 10000L;        
-		float angleInDegrees = (360.0f / 10000.0f) * ((int) time);                
-
 		// Set our per-vertex lighting program.
 		GLES20.glUseProgram(mProgramHandle);
-
-		// Calculate position of the light. Rotate and then push into the distance.
-		Matrix.setIdentityM(mLightModelMatrix, 0);
-		Matrix.translateM(mLightModelMatrix, 0, 0.0f, 0.0f, -5.0f);      
-		Matrix.rotateM(mLightModelMatrix, 0, angleInDegrees, 0.0f, 1.0f, 0.0f);
-		Matrix.translateM(mLightModelMatrix, 0, 0.0f, 0.0f, 2.0f);
-
-		Matrix.multiplyMV(mLightPosInWorldSpace, 0, mLightModelMatrix, 0, mLightPosInModelSpace, 0);
-		Matrix.multiplyMV(mLightPosInEyeSpace, 0, mViewMatrix, 0, mLightPosInWorldSpace, 0);                        
 
 		//CAMERA
 		Quaternion q= new Quaternion(qx,qy,qz,qw);
@@ -563,12 +554,51 @@ public class OpenGL2PointCloudRenderer extends Renderer implements GLSurfaceView
 	/**
 	 * Initialize the model data.
 	 */
-	public OpenGL2PointCloudRenderer(final Context activityContext, int maxDepthPoints, double aVerticalFOV) {
+	public OpenGL2PointCloudRenderer(final Context activityContext, int maxDepthPoints, double aVerticalFOV, int theMaxBillBoards) {
+		maxBillboards = theMaxBillBoards;
 		mMaxDepthPoints = maxDepthPoints;	      
 		billboards = new ArrayList<Billboard>();     
 		mActivityContext = activityContext;
 		verticalFOV = new Float(aVerticalFOV).floatValue();
+		 
 
 	}
+	
+	private void loadBitmaps() {
+		final BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inScaled = false;	// No pre-scaling
+		Resources res = mActivityContext.getResources();
+		for(int i=0; i < maxBillboards; i++) {
+			int h = getAndroidDrawableId("r" + i);
+			//mTextureDataHandles[i] = TextureHelper.loadTexture(mActivityContext, h);
+			billBoardBitmaps[i] = BitmapFactory.decodeResource(res, h, options);
+			
+			Log.i(TAG,"loaded resource:" +h);				
+		}
+	}
+	
+	private class LoadBitmapsTask extends AsyncTask {
 
+		
+		@Override
+		protected Object doInBackground(Object... params) {
+			final BitmapFactory.Options options = new BitmapFactory.Options();
+			options.inScaled = false;	// No pre-scaling
+			Resources res = mActivityContext.getResources();
+			for(int i=0; i < maxBillboards; i++) {
+				int h = getAndroidDrawableId("r" + i);
+				//mTextureDataHandles[i] = TextureHelper.loadTexture(mActivityContext, h);
+				billBoardBitmaps[i] = BitmapFactory.decodeResource(res, h, options);
+				
+				Log.i(TAG,"loaded resource:" +h);				
+			}
+			return null;
+
+		}
+
+
+
+
+	}
+	
 }

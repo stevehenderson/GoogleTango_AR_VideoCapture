@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
 
-import com.digitalblacksmith.tango_ar_pointcloud.R;
+import java.io.File;
+
 import com.google.atap.tangoservice.Tango;
 
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
 
 import android.view.View;
 import android.widget.Button;
@@ -36,8 +38,10 @@ public class StartActivity extends Activity implements View.OnClickListener {
 	public static final String OPENGL_VERSION = 
 			"com.projecttango.experiments.javamotiontracking.opengl_version";
 
+	
+	public final static String SCREENCAPTURE_DIRECTORY = "GoogleTangoARVideoCapture"; 
+	
 	private Button startButton;	
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -45,34 +49,28 @@ public class StartActivity extends Activity implements View.OnClickListener {
 				Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
 				Tango.TANGO_INTENT_ACTIVITYCODE);
 		setContentView(R.layout.start);
+		
+		
+		//Check if external storage location exists		
+		final String PATH = Environment.getExternalStorageDirectory() + "/" + SCREENCAPTURE_DIRECTORY + "/";
+		if(!(new File(PATH)).exists()) {
+			new File(PATH).mkdirs();
+		}
+		
 		this.setTitle(R.string.app_name);
 		startButton = (Button) findViewById(R.id.startButton);
-		
-
 		startButton.setOnClickListener(this);		
 
 	}
 
 	@Override
 	public void onClick(View v) {
-		startMotionTracking(2.0);
-	}
-
-	private void startMotionTracking(double d) {
 		Intent startmotiontracking = new Intent(this, TangoActivity.class);
-		startmotiontracking.putExtra(OPENGL_VERSION, d);
-		startActivity(startmotiontracking);
+ 		startmotiontracking.putExtra(OPENGL_VERSION, 2);
+ 		startActivity(startmotiontracking);
+     	
 	}
 
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		// Check which request we're responding to
-		if (requestCode == Tango.TANGO_INTENT_ACTIVITYCODE) {
-			// Make sure the request was successful
-			if (resultCode == RESULT_CANCELED) {
-				Toast.makeText(this, R.string.motiontrackingpermission, Toast.LENGTH_SHORT).show();
-				finish();
-			}
-		}
-	}
+	
+	
 }

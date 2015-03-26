@@ -5,7 +5,7 @@
  * should not be modified by hand.
  */
 
-package com.digitalblacksmith.tango_ar_pointcloud;
+package com.digitalblacksmith.tango_ar_videocapture;
 
 public final class R {
     public static final class attr {

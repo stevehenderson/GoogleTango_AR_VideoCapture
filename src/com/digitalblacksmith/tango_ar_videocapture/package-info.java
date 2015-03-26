@@ -17,4 +17,4 @@
  * A sample application showing how to use Motion Tracking Data with Opengl using Project
  * Tango API.
  */
-package com.digitalblacksmith.tango_stickynotes;
+package com.digitalblacksmith.tango_ar_videocapture;
